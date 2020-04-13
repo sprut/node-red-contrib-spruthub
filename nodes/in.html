@@ -1,0 +1,156 @@
+<script type="text/x-red" data-template-name="spruthub-in">
+    <link rel="stylesheet" href="spruthub/static/css/multiple-select.css" type="text/css" />
+    <link rel="stylesheet" href="spruthub/static/css/common.css" type="text/css" />
+
+    <div class="form-row">
+        <label for="node-input-name" class="l-width"><i class="fa fa-bookmark"></i> <span data-i18n="label.name"></span></label>
+        <input type="text" id="node-input-name" data-i18n="[placeholder]placeholder.name">
+    </div>
+    <div class="form-row" style="display:none;">
+        <label for="node-input-friendly_name" class="l-width"><i class="fa fa-bookmark"></i> <span data-i18n="label.friendly_name"></span></label>
+        <input type="text" id="node-input-friendly_name" data-i18n="[placeholder]placeholder.friendly_name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-server" class="l-width"><i class="fa fa-globe"></i> <span data-i18n="label.server"></span></label>
+        <input type="text" id="node-input-server">
+    </div>
+    <div class="form-row">
+        <label for="node-input-device_id" class="l-width"><i class="fa fa-crosshairs"></i> <span data-i18n="label.topic"></span></label>
+        <select id="node-input-device_id" class="s-width" data-single="true"></select>
+    </div>
+    <div class="form-row">
+        <label for="force-refresh" class="l-width"><i class="fa fa-refresh"></i> <span data-i18n="label.refresh"></span></label>
+        <a class="red-ui-button s-width" id="force-refresh" name="force-refresh"><span data-i18n="label.refresh_devices_list"></span></a>
+    </div>
+    <div class="form-row">
+        <label for="node-input-state" class="l-width"><i class="fa fa-tag"></i> <span data-i18n="label.state"></span></label>
+        <select id="node-input-state" class="s-width"  data-i18n="[placeholder]multiselect.complete_payload"></select>
+    </div>
+<!--    <div class="form-row">-->
+<!--        <label for="node-input-output" class="l-width"><i class="fa fa-sign-out"></i> <span data-i18n="label.output"></span></label>-->
+<!--        <select id="node-input-output" class="s-width">-->
+<!--            <option value="always" data-i18n="label.always">Always</option>-->
+<!--            <option value="onchange" data-i18n="label.on_state_change">On state change</option>-->
+<!--            <option value="onupdate" data-i18n="label.on_update">On update</option>-->
+<!--        </select>-->
+<!--    </div>-->
+    <div class="form-row">
+        <label for='node-input-outputAtStartup' class="l-width"><i class='fa fa-share-square'></i> <span data-i18n="label.start_output"></span></label>
+        <input type="checkbox" id="node-input-outputAtStartup" checked="checked" style="display: inline-block; width: auto; vertical-align: top;"> <span data-i18n="label.start_output_help"></span></input>
+    </div>
+</script>
+
+<script type='text/javascript'>
+    RED.nodes.registerType('spruthub-in', {
+        category: 'SprutHub',
+        color: '#FDBF48',
+        defaults: {
+            name: {
+                value: ""
+            },
+            server: {
+                type: "spruthub-server",
+                required: true
+            },
+            friendly_name: {
+                value: "",
+                required: false
+            },
+            device_id: {
+                value: null,
+                required: true
+            },
+            state: {
+                value: ""
+            },
+            outputAtStartup: {
+                value: true,
+                required: true
+            }
+        },
+        inputs: 0,
+        outputs: 1,
+        outputLabels: ["value"],
+        paletteLabel: 'in',
+        icon: "icon.png",
+        label: function () {
+            var label = 'z2m-input';
+
+            if (this.name) {
+                label = this.name;
+            } else if (typeof(this.friendly_name) == 'string' && this.friendly_name.length) {
+                label = this.friendly_name;
+            } else if (typeof(this.device_id) == 'string') {
+                label = this.device_id;
+            }
+
+            return label;
+        },
+        oneditprepare: function () {
+            var node = this;
+
+            // var $outputSelect = $("#node-input-output");
+            //
+            // // Initialize bootstrap multiselect form
+            // $outputSelect.multipleSelect({
+            //     maxHeight: 300,
+            //     dropWidth: 320,
+            //     single: !(typeof $(this).attr('multiple') !== typeof undefined && $(this).attr('multiple') !== false),
+            //     placeholder: "Always"
+            // });
+
+
+            var updateOutput = function () {
+                var selectedState = $('#node-input-state option:selected').val();
+                var selectedDevice = $('#node-input-device_id option:selected').val();
+
+                // if ( (selectedState != 0 && selectedState != null && selectedDevice.match(/^\d/)) || (node.state != 0 && node.state != null)) {
+                //     $outputSelect.closest('.form-row').show();
+                // } else {
+                //     $outputSelect.closest('.form-row').hide();
+                // }
+                // $outputSelect.multipleSelect('refresh');
+            }
+
+            $('#node-input-state').on("change", function() {
+                var state = $('#node-input-state option:selected').val();
+                if (state) { node.state = state; }
+                // if (parseInt(state) === 0) {$outputSelect.val('always').multipleSelect('refresh');}
+                updateOutput();
+            });
+
+
+            setTimeout(function(){
+                var $deviceInput = $('#node-input-device_id');
+
+                z2m_getItemList(node.device_id, '#node-input-device_id', {allowEmpty:false});
+
+                $deviceInput.on("change", function(){
+                    z2m_getItemStateList(0, '#node-input-state');
+                    var device = $('#node-input-device_id option:selected').val();
+                    updateOutput();
+
+                    $('#node-input-friendly_name').val($('#node-input-device_id option:selected').attr('data-friendly_name'));
+                });
+
+                setTimeout(function () {
+                    z2m_getItemStateList(node.state, '#node-input-state');
+                },100);
+
+                // if (!node.output) { $outputSelect.val('always').multipleSelect('refresh'); }
+
+            }, 100); //we need small timeout, too fire change event for server select
+        },
+        oneditsave: function () {
+            var selectedOptions = $('#node-input-device_id option:selected');
+            if (selectedOptions) {
+                this.topic = selectedOptions.map(function () {
+                    return $(this).val();
+                });
+            } else {
+                this.topic = null;
+            }
+        }
+    });
+
+</script>

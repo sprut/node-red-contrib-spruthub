@@ -1,0 +1,404 @@
+<style>
+    .node-input-devices-friendly_name, .node-input-groups-friendly_name {
+        width:100% !important;
+        min-width: 200px !important;
+    }
+    table.z2m_table {
+        border-spacing: 5px;
+        border-collapse: separate;
+    }
+    table.z2m_table th {
+        text-align: left;
+    }
+    table.z2m_table td {
+        vertical-align: top;
+    }
+</style>
+<script type='text/javascript'>
+    $.getScript('spruthub/static/tokeninput/jquery.tokeninput.js');
+</script>
+
+
+
+<script type="text/x-red" data-template-name="spruthub-bridge">
+    <link rel="stylesheet" href="spruthub/static/css/multiple-select.css" type="text/css" />
+    <link rel="stylesheet" href="spruthub/static/css/common.css" type="text/css" />
+    <link rel="stylesheet" href="spruthub/static/tokeninput/token-input-facebook.css" type="text/css" />
+
+    <div class="form-row">
+        <label for="node-input-name" class="l-width"><i class="fa fa-bookmark"></i> <span data-i18n="label.name"></span></label>
+        <input type="text" id="node-input-name" data-i18n="[placeholder]placeholder.name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-server" class="l-width"><i class="fa fa-globe"></i> <span data-i18n="label.server"></span></label>
+        <input type="text" id="node-input-server">
+    </div>
+    <div class="form-row">
+        <label for="refreshBtn" class="l-width"><i class="fa fa-refresh"></i> <span data-i18n="label.refresh"></span></label>
+        <a class="red-ui-button s-width" id="refreshBtn"><span data-i18n="label.refresh_all"></span></a>
+    </div>
+
+    <div id="config_wr" style="display:none;">
+        <div class="form-row">
+            <!-- Tabsheets -->
+            <ul style="background: #fff; min-width: 600px; margin-bottom: 20px;" id="node-z2m-tabs"></ul>
+        </div>
+        <div id="node-z2m-tabs-content" style="min-height: 150px">
+            <!-- Content of all tabsheets -->
+            <div id="node-z2m-tab-bridge" class="node-z2m-tab-bridge" style="position: relative; margin-top: 30px;">
+                <div class="form-row">
+                    <label for="permit_join_btn" class="l-width"><i class="fa fa-share-alt"></i> <span data-i18n="label.permit_join"></span></label>
+                    <button style="width: 70%" class="red-ui-button permit_join_btn" id="permit_join_btn"><span data-i18n="label.permit_join_help"></span></button>
+                    <button style="width: 70%" class="red-ui-button permit_join_btn" style="display:none;" id="permit_join_cancel_btn"><span data-i18n="label.permit_join_cancel_help"></span></button>
+                </div>
+                <div class="form-row">
+                    <label for="log_level_info_btn" class="l-width"><i class="fa fa-commenting-o"></i> <span data-i18n="label.log_level"></span></label>
+                    <button style="width: 17%" class="red-ui-button log_level_btn" data-level="info" id="log_level_info_btn"><span data-i18n="label.log_level_info"></span></button>
+                    <button style="width: 17%" class="red-ui-button log_level_btn" data-level="debug" id="log_level_debug_btn"><span data-i18n="label.log_level_debug"></span></button>
+                    <button style="width: 17%" class="red-ui-button log_level_btn" data-level="warn" id="log_level_warn_btn"><span data-i18n="label.log_level_warn"></span></button>
+                    <button style="width: 17%" class="red-ui-button log_level_btn" data-level="error" id="log_level_error_btn"><span data-i18n="label.log_level_error"></span></button>
+                </div>
+                <div class="form-row">
+                    <label for="config_version" class="l-width"><span data-i18n="label.version"></span></label>
+                    <span id="config_version" style="font-weight:bold"> - </span>
+                </div>
+            </div>
+
+            <div id="node-z2m-tab-devices" class="node-z2m-tab-devices" style="position: relative; margin-top: 30px;">
+                <table class="z2m_table" id="node-z2m-devices_table">
+                    <thead>
+                        <th style="width:150px"><span data-i18n="devices.friendly_name"></span></th>
+                        <th style="width:95%;"><span data-i18n="devices.device"></span></th>
+                        <th style="width:50px;"></th>
+                        <th style="width:50px;"></th>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+                <div class="form-row form-row-auto-height">
+                    <ol id="node-input-devices-container"></ol>
+                </div>
+            </div>
+
+            <div id="node-z2m-tab-groups" class="node-z2m-tab-groups" style="position: relative; margin-top: 30px;">
+            <a href="#" class="red-ui-item-add red-ui-button"><i class="fa fa-plus"></i>&nbsp;<span data-i18n="groups.add"></span></a>
+                <table class="z2m_table" id="node-z2m-groups_table">
+                    <thead>
+                        <th style="width:95%;"><span data-i18n="groups.friendly_name"></span></th>
+                        <th style="width:50px;"></th>
+                        <th style="width:50px;"></th>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+                <div class="form-row form-row-auto-height">
+                    <ol id="node-input-groups-container"></ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>
+
+<script type='text/javascript'>
+    RED.nodes.registerType('spruthub-bridge', {
+        category: 'SprutHub',
+        color: '#FDBF48',
+        defaults: {
+            name: {
+                value: ""
+            },
+            server: {
+                type: "spruthub-server",
+                required: true
+            },
+            topic: {
+                value: null,
+                required: false
+            }
+        },
+        inputs: 1,
+        outputs: 1,
+        outputLabels: ["value"],
+        paletteLabel: 'bridge',
+        icon: "icon.png",
+        label: function () {
+            var label = 'SprutHub Bridge';
+            if (this.name) {
+                label = this.name;
+            }
+            return label;
+        },
+        oneditprepare: function () {
+            var node = this;
+
+            node.tabs = RED.tabs.create({
+                id: "node-z2m-tabs",
+                onchange: function (tab) {
+                    $("#node-z2m-tabs-content").children().hide();
+                    $("#" + tab.id).show();
+                }
+            });
+            node.tabs.addTab({
+                id: "node-z2m-tab-bridge",
+                label: RED._("node-red-contrib-spruthub/bridge:tabs.bridge")
+            });
+            node.tabs.addTab({
+                id: "node-z2m-tab-devices",
+                label: RED._("node-red-contrib-spruthub/bridge:tabs.devices")
+            });
+            node.tabs.addTab({
+                id: "node-z2m-tab-groups",
+                label: RED._("node-red-contrib-spruthub/bridge:tabs.groups")
+            });
+
+            $('#refreshBtn').on("click", function(){
+                init(true);
+            });
+
+            init(false);
+
+
+
+            function init (force = false) {
+                var $permitJoinBtn = $('#permit_join_btn');
+
+                //get config
+                $.getJSON('spruthub/getConfig', {
+                    controllerID: node.server,
+                    permit_join: true
+                }).done(function (data, textStatus, jqXHR) {
+
+
+                    $('#config_wr').show();
+                    $('#config_version').text(data.version);
+
+                    $('.log_level_btn').each(function () {
+                        $(this).removeClass('active');
+                    });
+                    $('.log_level_btn#log_level_' + data.log_level + '_btn').addClass('active');
+
+
+                    $('.permit_join_btn').each(function () {
+                        $(this).hide();
+                    });
+
+                    if (data.permit_join) {
+                        $('#permit_join_cancel_btn').show()
+                    } else {
+                        $permitJoinBtn.show();
+                    }
+                    $('.log_level_btn#log_level_' + data.log_level + '_btn').addClass('active');
+                });
+
+
+                //log level
+                $('.log_level_btn').off('click').on('click', function () {
+                    $('.log_level_btn').each(function () {
+                        $(this).removeClass('active');
+                    });
+                    $(this).addClass('active');
+
+                    $.getJSON('spruthub/setLogLevel', {
+                        controllerID: node.server,
+                        log_level: $(this).data('level')
+                    }).done(function (data, textStatus, jqXHR) {
+                    });
+                });
+
+                var timeout = null;
+                //permit join
+                $('#permit_join_cancel_btn').off('click').on('click', function () {
+                    $permitJoinBtn.show();
+                    $('#permit_join_cancel_btn').hide();
+                    $.getJSON('spruthub/setPermitJoin', {
+                        controllerID: node.server,
+                        permit_join: false
+                    });
+                });
+
+                $permitJoinBtn.off('click').on('click', function () {
+                    clearTimeout(timeout);
+                    $permitJoinBtn.hide();
+                    $('#permit_join_cancel_btn').show();
+                    $.getJSON('spruthub/setPermitJoin', {
+                        controllerID: node.server,
+                        permit_join: true
+                    }).done(function (data, textStatus, jqXHR) {
+                        timeout = setTimeout(function () {
+                            $permitJoinBtn.show();
+                            $('#permit_join_cancel_btn').hide();
+                            $.getJSON('spruthub/setPermitJoin', {
+                                controllerID: node.server,
+                                permit_join: false
+                            });
+                        }, 60000 * 3);
+                    });
+                });
+
+
+                $.getJSON('spruthub/getDevices', {
+                    controllerID: node.server,
+                    forceRefresh: force
+                }).done(function (data, textStatus, jqXHR) {
+
+                    var tokeninputArr = [];
+                    var tokeninputArrPrePopulate = [];
+                    var devices = data[0]; //devices
+                    if (devices) {
+                        $('#node-z2m-devices_table tbody tr').remove();
+                        devices.forEach(function (device, index) {
+                            if ("Coordinator" === device.type) return;
+
+                            tokeninputArr.push({'id':device.ieeeAddr, 'name':device.friendly_name, 'model': device.modelID});
+                            var input = '<input class="node-input-devices-friendly_name" type="text" value="' + device.friendly_name + '">';
+                            var info = '<div class="device_wr"><span><b>' + device.ieeeAddr + '</b>: ' + device.modelID + '</span><div class="help-tips">' + device.description + '</div></div>';
+                            var removeBtn = '<a href="#" class="red-ui-item-remove red-ui-button" data-id="' + device.ieeeAddr + '"><i class="fa fa-remove"></i></a>'
+                            var saveBtn = '<a href="#" class="red-ui-item-save red-ui-button" data-ieeeaddr="' + device.ieeeAddr + '"><i class="fa fa-check"></i>&nbsp;' + RED._("node-red-contrib-spruthub/bridge:devices.set") + '</a>'
+
+                            $('#node-z2m-devices_table tbody').append('<tr><td>' + input + '</td><td>' + info + '</td><td>' + saveBtn + '</td><td>' + removeBtn + '</td><</tr>');
+                        });
+
+                        $('#node-z2m-devices_table .red-ui-item-save').on('click', function () {
+                            var ieeeAddr = $(this).attr('data-ieeeaddr');
+                            var newName = $(this).closest('tr').find('.node-input-devices-friendly_name').val();
+
+                            $.getJSON('spruthub/renameDevice', {
+                                controllerID: node.server,
+                                ieeeAddr: ieeeAddr,
+                                newName: newName
+                            }).done(function (data, textStatus, jqXHR) {
+                                if ("error" in data) alert(data.description);
+                            });
+                        });
+                        $('#node-z2m-devices_table .red-ui-item-remove').on('click', function () {
+                            if (confirm(RED._("node-red-contrib-spruthub/bridge:devices.sure_remove"))) {
+                                var id = $(this).attr('data-id');
+                                $(this).closest('tr').remove();
+
+                                $.getJSON('spruthub/removeDevice', {
+                                    controllerID: node.server,
+                                    id: id
+                                }).done(function (data, textStatus, jqXHR) {
+                                    if ("error" in data) alert(data.description);
+                                });
+                            }
+                        });
+                    }
+
+                    var groups = data[1]; //groups
+                    if (groups) {
+                        $('#node-z2m-groups_table tbody tr').remove();
+                        groups.forEach(function (group, index) {
+                            var input = '<input class="node-input-groups-friendly_name" type="text" value="' + group.friendly_name + '">';
+
+                            // var info = '<div class="device_wr"><span><b>'+device.ieeeAddr+'</b>: '+device.modelID+'</span><div class="help-tips">'+device.description+'</div></div>';
+                            var removeBtn = '<a href="#" class="red-ui-item-remove red-ui-button" data-id="' + group.ID + '"><i class="fa fa-remove"></i></a>'
+                            var saveBtn = '<a href="#" class="red-ui-item-save red-ui-button" data-id="' + group.ID + '"><i class="fa fa-check"></i>&nbsp;' + RED._("node-red-contrib-spruthub/bridge:groups.set") + '</a>'
+
+                            $('#node-z2m-groups_table tbody').append('<tr class="group_row_' + group.ID + '"><td>' + input + '</td><td>' + saveBtn + '</td><td>' + removeBtn + '</td></tr><tr class="group_row_' + group.ID + '"><td colspan="4" style="padding-bottom:25px;"><input type="hidden" data-group_id="' + group.ID + '" id="tokeninput_'+group.ID+'" class="tokeninput"/></td></tr>');
+
+                            tokeninputArrPrePopulate  = [];
+                            group.devices.forEach(function (key, value) {
+                                tokeninputArrPrePopulate.push({"id":key, "name":key});
+                            });
+                            $("#tokeninput_"+group.ID).tokenInput(tokeninputArr, {
+                                theme:'facebook',
+                                prePopulate:tokeninputArrPrePopulate,
+                                processPrePopulate:true,
+                                hintText:RED._("node-red-contrib-spruthub/bridge:tokeninput.type_to_search"),
+                                noResultsText:RED._("node-red-contrib-spruthub/bridge:tokeninput.no_results"),
+                                searchingText:RED._("node-red-contrib-spruthub/bridge:tokeninput.searching"),
+                                deleteText:'&times;',
+                                animateDropdown:true,
+                                resultsFormatter:function (item) {
+                                    if(item.id!=0){
+                                        return '<li>' + item.name + ' : '+item.model+'</li>'
+                                    }
+                                },
+                                onAdd:function (item) {
+                                    var groupId = this.attr('data-group_id');
+                                    var deviceId = item.id;
+
+                                    $.getJSON('spruthub/addDeviceToGroup', {
+                                        controllerID: node.server,
+                                        groupId: groupId,
+                                        deviceId: deviceId,
+                                    }).done(function (data, textStatus, jqXHR) {
+                                        if ("error" in data) alert(data.description);
+                                    });
+                                },
+                                onDelete:function (item) {
+                                    var groupId = this.attr('data-group_id');
+                                    var deviceId = item.id;
+
+                                    $.getJSON('spruthub/removeDeviceFromGroup', {
+                                        controllerID: node.server,
+                                        groupId: groupId,
+                                        deviceId: deviceId,
+                                    }).done(function (data, textStatus, jqXHR) {
+                                        if ("error" in data) alert(data.description);
+                                    });
+                                },
+                            });
+                        });
+
+
+
+
+
+
+
+
+                        $('#node-z2m-groups_table .red-ui-item-save').on('click', function () {
+                            var id = $(this).attr('data-id');
+                            var newName = $(this).closest('tr').find('.node-input-groups-friendly_name').val();
+
+                            $.getJSON('spruthub/renameGroup', {
+                                controllerID: node.server,
+                                id: id,
+                                newName: newName
+                            }).done(function (data, textStatus, jqXHR) {
+                                if ("error" in data) alert(data.description);
+                            });
+                        });
+                        $('#node-z2m-groups_table .red-ui-item-remove').on('click', function () {
+                            if (confirm(RED._("node-red-contrib-spruthub/bridge:groups.sure_remove"))) {
+                                var id = $(this).attr('data-id');
+                                $('.group_row_' + id).remove();
+
+                                $.getJSON('spruthub/removeGroup', {
+                                    controllerID: node.server,
+                                    id: id
+                                }).done(function (data, textStatus, jqXHR) {
+                                    if ("error" in data) alert(data.description);
+                                });
+                            }
+                        });
+                        $('#node-z2m-tab-groups .red-ui-item-add').on('click', function () {
+                            var name = prompt(RED._("node-red-contrib-spruthub/bridge:groups.enter_group_name"), "");
+                            if (name) {
+                                $.getJSON('spruthub/addGroup', {
+                                    controllerID: node.server,
+                                    name: name
+                                }).done(function (data, textStatus, jqXHR) {
+                                    if ("error" in data) alert(data.description);
+
+
+                                    setTimeout(function(){
+                                        init();
+                                    }, 1000);
+                                });
+                            }
+                        });
+                    }
+
+                });
+            }
+
+        },
+        oneditsave: function () {
+
+        }
+    });
+</script>
+

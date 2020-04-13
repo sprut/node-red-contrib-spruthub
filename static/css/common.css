@@ -1,0 +1,51 @@
+.form-row label.l-width {
+    width: 25%;
+    min-width: 120px;
+}
+.form-row label.a-width {
+    width: auto;
+}
+.s-width {width:70% !important;}
+
+.ms-choice {
+    height:34px;
+    border: 1px solid rgb(204, 204, 204);
+    line-height: 34px !important;
+}
+.ms-search input {
+    width:100% !important;
+}
+.ms-drop li label {
+    width:20px !important;
+}
+button.active {
+    background-color: #ddd;
+}
+.help_block {
+    display: none;
+}
+.help-tips {
+    font-style: italic;
+    font-size: 12px;
+}
+
+.red-ui-editor .form-horizontal li.token-input-input-token-facebook input {
+    height:23px !important;
+    width: 50px;
+    padding: 1px 4px;
+    background-color: #fafafa;
+    border: 1px dashed #91bacf;
+    margin: 3px;
+    border-radius: 3px;
+    -moz-border-radius: 3px;
+    -webkit-border-radius: 3px;
+    font-size: 12px;
+}
+li.token-input-token-facebook {
+    height:19px !important;
+}
+.tokeninput-label {
+    float:left;
+    line-height: 23px;
+    padding: 3px 5px 0 0;
+}
