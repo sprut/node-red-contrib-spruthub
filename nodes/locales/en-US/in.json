@@ -1,17 +1,15 @@
 {
     "label": {
         "name": "Name",
-        "server": "Server",
-        "topic": "Device",
-        "state": "Payload output",
+        "server": "Sprut.hub",
+        "uid": "Accessory",
+        "cid": "Characteristic",
+        "show_hidden": "Show hidden accessories",
+        "enable_multiple": "Enable multiple select",
         "refresh": "Refresh",
-        "refresh_devices_list": "Refresh Devices List",
+        "refresh_list": "Refresh List",
         "start_output": "Start Output",
-        "start_output_help": "Send value on start",
-        "always": "Always",
-        "on_state_change": "On state change",
-        "on_update": "On update",
-        "output": "Output"
+        "start_output_help": "Send value on start"
     },
     "placeholder": {
         "name": "Name"
@@ -21,19 +19,14 @@
         "no_device": "no device",
         "no_connection": "no connection",
         "connected": "connected",
-        "received": "ok"
+        "received": "received"
     },
     "multiselect": {
-        "devices": "Devices",
-        "filter_devices": "Filter devices...",
-        "refresh": "Refresh devices list",
-        "none_selected": "None selected",
-        "complete_payload": "Complete state payload",
-        "spruthub": "SprutHub",
-        "homekit": "Homekit",
-        "groups": "Groups"
-    },
-    "tip": {
-        "deploy": "<b>Important:</b> deploy server node to get devices list"
+        "complete_payload": "All",
+        "all": "All",
+        "devices": "Accessories",
+        "filter_devices": "Filter accessories...",
+        "refresh": "Refresh list",
+        "none_selected": "None selected"
     }
 }

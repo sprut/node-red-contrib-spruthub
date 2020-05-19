@@ -30,8 +30,8 @@
 
 <script type='text/javascript'>
     RED.nodes.registerType('spruthub-get', {
-        category: 'SprutHub',
-        color: '#FDBF48',
+        category: 'Sprut.hub',
+        color: '#000000',
         defaults: {
             name: {
                 value: ""
@@ -56,9 +56,9 @@
         outputs: 1,
         outputLabels: ["value"],
         paletteLabel: 'get',
-        icon: "icon.png",
+        icon: "logo_white.png",
         label: function () {
-            var label = 'z2m-get';
+            var label = 'spruthub-get';
 
             if (this.name) {
                 label = this.name;
@@ -69,6 +69,9 @@
             }
 
             return label;
+        },
+        labelStyle: function () {
+            return "node_label_white";
         },
         oneditprepare: function () {
             var node = this;
@@ -94,18 +97,18 @@
 
 
             setTimeout(function(){
-                z2m_getItemList(node.device_id, '#node-input-device_id', {allowEmpty:false});
+                spruthub_getItemList(node.device_id, '#node-input-device_id', {allowEmpty:false});
 
                 var $deviceInput = $('#node-input-device_id');
                 $deviceInput.on("change", function(){
-                    z2m_getItemStateList(0, '#node-input-state');
+                    spruthub_getItemStateList(0, '#node-input-state');
                     // var device = $('#node-input-device_id option:selected').val();
                     updateOutput();
                     $('#node-input-friendly_name').val($('#node-input-device_id option:selected').attr('data-friendly_name'));
                 });
 
                 setTimeout(function () {
-                    z2m_getItemStateList(node.state, '#node-input-state');
+                    spruthub_getItemStateList(node.state, '#node-input-state');
                 },100);
 
                 // if (!node.output) { $outputSelect.val('always').multipleSelect('refresh'); }

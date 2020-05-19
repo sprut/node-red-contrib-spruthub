@@ -36,7 +36,7 @@ module.exports = function(RED) {
                             //     payload = Date.now();
                             //     break;
                             // }
-                            case 'z2m_payload':
+                            case 'spruthub_payload':
                                 payload = node.config.payload;
                                 break;
 
@@ -85,7 +85,7 @@ module.exports = function(RED) {
                                 command = message[node.config.command];
                                 break;
                             }
-                            case 'z2m_cmd':
+                            case 'spruthub_cmd':
                                 command = node.config.command;
                                 switch (command) {
                                     case 'state':

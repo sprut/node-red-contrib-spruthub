@@ -1,11 +1,22 @@
 {
     "label": {
-        "base_topic": "Base topic",
         "name": "Name",
         "host": "Host",
-        "mqtt_port": "MQTT Port",
-        "mqtt_username": "MQTT Username",
-        "mqtt_password": "MQTT Password"
+        "email": "Email",
+        "password": "Password",
+        "test_connection": "Test connection",
+        "token": "Token",
+        "mqtt_username": "Username",
+        "mqtt_password": "Password",
+        "mqtt_port": "Port",
+        "check": "Check",
+        "sh_mqtt": "MQTT status",
+        "sh_api": "REST API status",
+        "sh_version": "Sprut.hub version",
+        "sh_accessories_cnt": "Accessories",
+        "sh_auth": "Auth",
+        "error": "Error",
+        "ok": "OK"
     },
     "placeholder": {
         "name": "Name"

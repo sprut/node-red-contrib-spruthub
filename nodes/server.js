@@ -1,58 +1,73 @@
 const SprutHubHelper = require('../lib/SprutHubHelper.js');
 var mqtt = require('mqtt');
+var request = require('request');
 
 module.exports = function (RED) {
     class ServerNode{
-        constructor(n) {
+          constructor(n) {
             RED.nodes.createNode(this, n);
 
             var node = this;
             node.config = n;
             node.connection = false;
+            node.base_topic = "/spruthub";
+            node.spruthub_port = 55555;
+            node.spruthub_token = null;
+            node.mqtt_port = 44444;
             node.topic = node.config.base_topic+'/#';
+            node.accessories = undefined;
+            node.service_types = undefined;
             node.items = undefined;
-            node.groups = undefined;
             node.devices = undefined;
-            node.devices_values = [];
+            node.current_values = {};
             node.bridge_config = null;
             node.bridge_state = null;
             node.on('close', () => this.onClose());
             node.setMaxListeners(0);
 
-            //mqtt
-            node.mqtt = node.connectMQTT();
-            node.mqtt.on('connect', () => this.onMQTTConnect());
-            node.mqtt.on('message', (topic, message) => this.onMQTTMessage(topic, message));
-
-            node.mqtt.on('close', () => this.onMQTTClose());
-            node.mqtt.on('end', () => this.onMQTTEnd());
-            node.mqtt.on('reconnect', () => this.onMQTTReconnect());
-            node.mqtt.on('offline', () => this.onMQTTOffline());
-            node.mqtt.on('disconnect', (error) => this.onMQTTDisconnect(error));
-            node.mqtt.on('error', (error) => this.onMQTTError(error));
-
-            // console.log(node.config._users);
+            node.init();
         }
 
-        connectMQTT() {
+        async init () {
+            await this.getToken();
+            await this.getAccessories();
+            await this.getServiceTypes();
+
+            //mqtt
+            this.mqtt = this.connectMQTT();
+            this.mqtt.on('connect', () => this.onMQTTConnect());
+            this.mqtt.on('message', (topic, message) => this.onMQTTMessage(topic, message));
+            this.mqtt.on('close', () => this.onMQTTClose());
+            this.mqtt.on('end', () => this.onMQTTEnd());
+            this.mqtt.on('reconnect', () => this.onMQTTReconnect());
+            this.mqtt.on('offline', () => this.onMQTTOffline());
+            this.mqtt.on('disconnect', (error) => this.onMQTTDisconnect(error));
+            this.mqtt.on('error', (error) => this.onMQTTError(error));
+        }
+
+        getBaseTopic() {
+            return this.base_topic;
+        }
+
+        connectMQTT(clientId = null) {
             var node = this;
             var options = {
-                port: node.config.mqtt_port||1883,
+                port: node.mqtt_port,
                 username: node.config.mqtt_username||null,
                 password: node.config.mqtt_password||null,
-                clientId:"NodeRed-"+node.id
+                clientId:"NodeRed-"+node.id+(clientId?"-"+clientId:"")
             };
             return mqtt.connect('mqtt://' + node.config.host, options);
         }
 
         subscribeMQTT() {
             var node = this;
-            node.mqtt.subscribe(node.topic, function (err) {
+            node.mqtt.subscribe(node.getBaseTopic()+'/accessories/#', function (err) {
                 if (err) {
-                    node.warn('MQTT Error: Subscribe to "' + node.topic);
+                    node.warn('MQTT Error: Subscribe to "' + node.getBaseTopic()+'/accessories/#');
                     node.emit('onConnectError', err);
                 } else {
-                    node.log('MQTT Subscribed to: "' + node.topic);
+                    node.log('MQTT Subscribed to: "' + node.getBaseTopic()+'/accessories/#');
                 }
             })
         }
@@ -64,92 +79,207 @@ module.exports = function (RED) {
             node.devices_values = [];
         }
 
-        getDevices(callback, forceRefresh = false, withGroups = false) {
+        getToken() {
             var node = this;
 
-            if (forceRefresh || node.devices === undefined) {
-                node.log('Refreshing devices');
-                node.devices = [];
-                node.groups = [];
+            return new Promise(function (resolve, reject) {
+                var authUrl = "http://" + node.config.host + ":" +node.spruthub_port + "/api/server/login/"+encodeURIComponent(node.config.email);
+                var formData = node.config.password;
 
-                var timeout = null;
-                var timeout_ms = 5000;
-
-                var options = {
-                    port: node.config.mqtt_port || 1883,
-                    username: node.config.mqtt_username || null,
-                    password: node.config.mqtt_password || null,
-                    clientId: "NodeRed-tmp-" + node.id
-                };
-                var client = mqtt.connect('mqtt://' + node.config.host, options);
-
-                client.on('connect', function () {
-
-                    //end function after timeout, if now response
-                    timeout = setTimeout(function(){
-                        client.end(true);
-                    }, timeout_ms);
-
-                    client.subscribe(node.topic, function (err) {
-                        if (!err) {
-                            // node.mqtt.publish(node.getBaseTopic() + "/bridge/config/groups", new Date().getTime() + "");
-                            client.publish(node.getBaseTopic() + "/bridge/config/groups", new Date().getTime() + "");
-                            client.publish(node.getBaseTopic() + "/bridge/config/devices/get", new Date().getTime() + "");
+                request({
+                    headers: {
+                        'Content-Length': formData.length,
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    uri: authUrl,
+                    body: formData,
+                    method: 'POST'
+                }, function (err, res, body) {
+                    if (err) {
+                        reject({errorMessage:err});
+                    } else if (res.statusCode != 200) {
+                        reject({errorMessage:res.statusCode+" "+res.statusMessage+": "+body, statusCode:res.statusCode, statusMessage: res.statusMessage, body:body});
+                    } else {
+                        if ('set-cookie' in res.headers) {
+                            var rawCookie = res.headers['set-cookie'];
+                            var regex = /token=([^;]*);/;
+                            node.spruthub_token = regex.exec(rawCookie)[1];
+                            if (node.spruthub_token) {
+                                resolve(node.spruthub_token);
+                            } else {
+                                reject({errorMessage:"Token not found"});
+                            }
                         } else {
-                            RED.log.error("spruthub: error code #0023: " + err);
+                            reject({errorMessage:"Cookie was not set"});
+                        }
+                    }
+                });
+            });
+        }
+
+        async getAccessories() {
+            var node = this;
+
+            var data = await node.getApiCall('/api/homekit/json').catch(error=>{
+                node.warn(error);
+                return (error);
+            });
+            if (SprutHubHelper.isJson(data)) {
+                node.accessories = JSON.parse(data);
+                node.saveCurrentValues(node.accessories);
+                return node.accessories;
+            }
+        }
+
+        async getServiceTypes() {
+            var node = this;
+
+            var data = await node.getApiCall('/api/types/service').catch(error=>{
+                node.warn(error);
+                return (error);
+            });
+            if (SprutHubHelper.isJson(data)) {
+                return node.service_types = JSON.parse(data);
+            }
+        }
+
+        getApiCall(path) {
+            var node = this;
+            return new Promise(function (resolve, reject) {
+                var url = "http://" + node.config.host + ":" +node.spruthub_port + path;
+
+                request({
+                    headers: {
+                        'Cookie': 'token='+node.spruthub_token
+                    },
+                    uri: url,
+                    method: 'GET'
+                }, function (err, res, body) {
+                    if (err) {
+                        reject({errorMessage:err});
+                    } else if (res.statusCode != 200) {
+                        reject({
+                            errorMessage: res.statusCode + " " + res.statusMessage + ": " + body,
+                            statusCode: res.statusCode,
+                            statusMessage: res.statusMessage,
+                            body: body
+                        });
+                    } else {
+                        resolve(body);
+                    }
+                });
+            });
+        }
+
+        testMqtt() {
+            var node = this;
+
+            return new Promise(function (resolve, reject) {
+                var timeout = null;
+                var client = node.connectMQTT('test');
+                client.on('connect', function () {
+                    client.subscribe(node.getBaseTopic() + "/revision", function (err) {
+                        if (err) {
                             client.end(true);
+                            reject({"errorMessage":err});
+                        } else {
+                            //end function after timeout, if now response
+                            timeout = setTimeout(function () {
+                                client.end(true);
+                                reject({"errorMessage": "MQTT connect timeout"});
+                            }, 3000);
                         }
                     })
                 });
-
-                client.on('error', function (error) {
-                    RED.log.error("spruthub: error code #0024: " + error);
-                    client.end(true);
-                });
-
-                client.on('end', function (error, s) {
-                    // console.log('END');
-                    clearTimeout(timeout);
-
-                    if (typeof (callback) === "function") {
-                        callback(withGroups?[node.devices, node.groups]:node.devices);
-                    }
-                    return withGroups?[node.devices, node.groups]:node.devices;
-                });
-
                 client.on('message', function (topic, message) {
-                    if (node.getBaseTopic() + "/bridge/state" == topic) {
-                        node.bridge_state = message.toString();
-                        if (message.toString() != "online") {
-                            RED.log.error("spruthub: bridge status: " + message.toString());
-                        }
-
-                    } else if (node.getBaseTopic()+'/bridge/log' == topic) {
-                        var messageString = message.toString();
-                        if (SprutHubHelper.isJson(messageString)) {
-                            var payload = JSON.parse(messageString);
-                            if ("type" in payload) {
-                                if ("groups" == payload.type) {
-                                    node.groups = payload.message;
-                                }
-                            }
-                        }
-
-                    } else if (node.getBaseTopic()+'/bridge/config' == topic) {
-                        node.bridge_config = JSON.parse(message.toString());
-
-                    } else if (node.getBaseTopic() + "/bridge/config/devices" == topic) {
-                        node.devices = JSON.parse(message.toString());
+                    if (node.getBaseTopic() + "/revision" == topic) {
+                        clearTimeout(timeout);
                         client.end(true);
+                        resolve({"revision":message.toString()});
                     }
-                })
-            } else {
-                node.log('Using cached devices');
-                if (typeof (callback) === "function") {
-                    callback(withGroups?[node.devices, node.groups]:node.devices);
-                }
-                return withGroups?[node.devices, node.groups]:node.devices;
+                });
+                client.on('error', function (error) {
+                    client.end(true);
+                    reject({"errorMessage":error});
+                });
+            });
+        }
+
+
+        async checkConnection(config) {
+            var node = this;
+            node.config.host = config.host;
+            node.config.email = config.email;
+            node.config.password = config.password;
+            // node.config.mqtt_username = config.mqtt_username;
+            // node.config.mqtt_password = config.mqtt_password;
+
+            var result = {
+                "auth":false,
+                "accessories_cnt":false,
+                "version":false,
+                "mqtt":false
+
+            };
+
+            var token = await node.getToken().catch(error=>{
+                node.warn(error);
+            });
+            if (token) {
+                result['auth'] = true;
             }
+
+            var accessories = await node.getAccessories().catch(error=>{
+                node.warn(error);
+            });
+            if (accessories) {
+                result['accessories_cnt'] = Object.keys(accessories.accessories).length;
+            }
+
+            var version = await node.getApiCall('/api/server/version').catch(error=>{
+                node.warn(error);
+            });
+            if (version) {
+                result['version'] = version;
+            }
+
+            var mqtt = await node.testMqtt().catch(error=>{
+                node.warn(error);
+            });
+            if (mqtt) {
+                result['mqtt'] = true;
+                result['mqtt_data'] = mqtt;
+            }
+
+            return result;
+        }
+
+
+        saveCurrentValues(data) {
+            var node = this;
+
+            var values = {};
+            var key = null;
+            var val = null;
+            var characteristic = null;
+            for (var i in data.accessories) {
+                for (var i2 in data.accessories[i]['services']) {
+                    for (var i3 in data.accessories[i]['services'][i2]['characteristics']) {
+                        key = data.accessories[i]['aid']+'_'+data.accessories[i]['services'][i2]['iid'];
+                        characteristic = data.accessories[i]['services'][i2]['characteristics'][i3]['type'];
+                        val = data.accessories[i]['services'][i2]['characteristics'][i3]['value'];
+
+                        if (!(key in values)) values[key] = {};
+                        values[key][characteristic]  = val;
+                    }
+                }
+            }
+
+            node.current_values = values;
+        }
+
+        getDevices() {
+            return this.getAccessories();
         }
 
 
@@ -172,24 +302,6 @@ module.exports = function (RED) {
             return result;
         }
 
-        getGroupById(id) {
-            var node = this;
-            var result = null;
-            for (var i in node.groups) {
-                if (id == node.groups[i]['ID']) {
-                    result = node.groups[i];
-                    result['lastPayload'] = {};
-
-                    var topic =  node.getBaseTopic()+'/'+(node.groups[i]['friendly_name']?node.groups[i]['friendly_name']:node.groups[i]['ID']);
-                    if (topic in node.devices_values) {
-                        result['lastPayload'] = node.devices_values[topic];
-                        result['homekit'] = SprutHubHelper.payload2homekit(node.devices_values[topic], node.groups[i])
-                    }
-                    break;
-                }
-            }
-            return result;
-        }
 
         getLastStateById(id) {
             var node = this;
@@ -217,22 +329,9 @@ module.exports = function (RED) {
             return result;
         }
 
-        getGroupByTopic(topic) {
-            var node = this;
-            var result = null;
-            for (var i in node.groups) {
-                if (topic == node.getBaseTopic()+'/'+node.groups[i]['friendly_name']
-                    || topic == node.getBaseTopic()+'/'+node.groups[i]['ID']) {
-                    result = node.groups[i];
-                    break;
-                }
-            }
-            return result;
-        }
 
-        getBaseTopic() {
-            return this.config.base_topic;
-        }
+
+
 
         setLogLevel(val) {
             var node = this;
@@ -241,166 +340,16 @@ module.exports = function (RED) {
             node.log('Log Level set to: '+val);
         }
 
-        setPermitJoin(val) {
-            var node = this;
-            val = val?"true":"false";
-            node.mqtt.publish(node.getBaseTopic() + "/bridge/config/permit_join", val);
-            node.log('Permit Join set to: '+val);
-        }
-
-        renameDevice(ieeeAddr, newName) {
-            var node = this;
-
-            var device = node.getDeviceById(ieeeAddr);
-            if (!device) {
-                return {"error":true,"description":"no such device"};
-            }
-
-            if (!newName.length)  {
-                return {"error":true,"description":"can not be empty"};
-            }
-
-            var payload = {
-                "old":device.friendly_name,
-                "new":newName
-            };
-
-            node.mqtt.publish(node.getBaseTopic() + "/bridge/config/rename", JSON.stringify(payload));
-            node.log('Rename device '+ieeeAddr+' to '+newName);
-
-            return {"success":true,"description":"command sent"};
-        }
-
-        removeDevice(ieeeAddr) {
-            var node = this;
-
-            var device = node.getDeviceById(ieeeAddr);
-            if (!device) {
-                return {"error":true,"description":"no such device"};
-            }
-
-            node.mqtt.publish(node.getBaseTopic() + "/bridge/config/force_remove", device.friendly_name);
-            node.log('Remove device: '+device.friendly_name);
-
-            return {"success":true,"description":"command sent"};
-        }
-
-        setDeviceOptions(friendly_name, options) {
-            var node = this;
-            //
-            // var device = node.getDeviceById(ieeeAddr);
-            // if (!device) {
-            //     return {"error":true,"description":"no such device"};
-            // }
-
-            var payload = {};
-            payload['friendly_name'] = friendly_name;
-            payload['options'] = options;
 
 
-            node.mqtt.publish(node.getBaseTopic() + "/bridge/config/device_options", JSON.stringify(payload));
-            node.log('Set device options: '+JSON.stringify(payload));
-
-            return {"success":true,"description":"command sent"};
-        }
-
-
-        renameGroup(id, newName) {
-            var node = this;
-
-            var group = node.getGroupById(id);
-            if (!group) {
-                return {"error":true,"description":"no such group"};
-            }
-
-            if (!newName.length)  {
-                return {"error":true,"description":"can not be empty"};
-            }
-
-            var payload = {
-                "old":group.friendly_name,
-                "new":newName
-            };
-
-            node.mqtt.publish(node.getBaseTopic() + "/bridge/config/rename", JSON.stringify(payload));
-            node.log('Rename group '+id+' to '+newName);
-
-            return {"success":true,"description":"command sent"};
-        }
-
-        removeGroup(id) {
-            var node = this;
-
-            var group = node.getGroupById(id);
-            if (!group) {
-                return {"error":true,"description":"no such group"};
-            }
-
-            node.mqtt.publish(node.getBaseTopic() + "/bridge/config/remove_group", group.friendly_name);
-            node.log('Remove group: '+group.friendly_name);
-
-            return {"success":true,"description":"command sent"};
-        }
-
-        addGroup(name) {
-            var node = this;
-
-            node.mqtt.publish(node.getBaseTopic() + "/bridge/config/add_group", name);
-            node.log('Add group: '+name);
-
-            return {"success":true,"description":"command sent"};
-        }
-
-
-        removeDeviceFromGroup(deviceId, groupId) {
-            var node = this;
-            
-            var device = node.getDeviceById(deviceId);
-            if (!device) {
-                device = {"friendly_name":deviceId};
-            }
-
-            var group = node.getGroupById(groupId);
-            if (!group) {
-                return {"error":true,"description":"no such group"};
-            }
-
-            node.mqtt.publish(node.getBaseTopic() + "/bridge/group/"+group.friendly_name+"/remove", device.friendly_name);
-            node.log('Removing device: '+device.friendly_name  + ' from group: '+group.friendly_name);
-
-            return {"success":true,"description":"command sent"};
-        }
-
-
-        addDeviceToGroup(deviceId, groupId) {
-            var node = this;
-
-
-            var device = node.getDeviceById(deviceId);
-            if (!device) {
-                return {"error":true,"description":"no such device"};
-            }
-
-            var group = node.getGroupById(groupId);
-            if (!group) {
-                return {"error":true,"description":"no such group"};
-            }
-
-            node.mqtt.publish(node.getBaseTopic() + "/bridge/group/"+group.friendly_name+"/add", device.friendly_name);
-            node.log('Adding device: '+device.friendly_name+ ' to group: '+group.friendly_name);
-
-            return {"success":true,"description":"command sent"};
-        }
-
-        onMQTTConnect() {
+        async onMQTTConnect() {
             var node = this;
             node.connection = true;
             node.log('MQTT Connected');
             node.emit('onMQTTConnect');
-            node.getDevices(function(){
-                node.subscribeMQTT();
-            });
 
+            // console.log(SprutHubHelper.convertDevicesData(node.accessories));
+            node.subscribeMQTT();
         }
 
         onMQTTDisconnect(error) {
@@ -455,74 +404,27 @@ module.exports = function (RED) {
             var node = this;
             var messageString = message.toString();
 
-            // console.log(topic);
-            // console.log(messageString);
-            //bridge
-            if (topic.search(new RegExp(node.getBaseTopic()+'\/bridge\/')) === 0) {
-                if (node.getBaseTopic() + '/bridge/config/devices' == topic) {
-                    node.devices = JSON.parse(messageString);
-                } else if (node.getBaseTopic() + '/bridge/state' == topic) {
-                    node.emit('onMQTTBridgeState', {
-                        topic: topic,
-                        payload: message.toString() == "online"
-                    });
-                } else if (node.getBaseTopic()+'/bridge/config' == topic) {
-                    node.bridge_config = JSON.parse(message.toString());
-
-                } else if (node.getBaseTopic() + '/bridge/log' == topic) {
-                    if (SprutHubHelper.isJson(messageString)) {
-                        var payload = JSON.parse(messageString);
-                        if ("type" in payload) {
-                            switch (payload.type) {
-                                case "device_renamed":
-                                case "device_announced":
-                                case "device_removed":
-                                case "group_renamed":
-                                case "group_removed":
-                                    node.getDevices(null, true);
-                                break;
-
-                                case "group_added":
-                                    node.setDeviceOptions(payload.message, {"retain": true});
-                                    node.getDevices(null, true);
-                                    break;
-
-                                case "pairing":
-                                    if ("interview_successful" == payload.message) {
-                                        node.setDeviceOptions(payload.meta.friendly_name, {"retain": true})
-                                    }
-                                break;
-                            }
-                        }
-                    }
-                }
-
-
-                node.emit('onMQTTMessageBridge', {
-                    topic:topic,
-                    payload:messageString
-                });
-            } else {
-                var payload_json = SprutHubHelper.isJson(messageString)?JSON.parse(messageString):messageString;
-
                 //isSet
                 if (topic.substring(topic.length - 4, topic.length) != '/set') {
-                    //clone object for payload output
-                    var payload = {};
-                    Object.assign(payload, payload_json);
-// console.log('==========MQTT START')
-// console.log(topic);
-// console.log(payload_json);
-// console.log('==========MQTT END')
-                    node.devices_values[topic] = payload_json;
-                    node.emit('onMQTTMessage', {
-                        topic: topic,
-                        payload: payload,
-                        device: node.getDeviceByTopic(topic),
-                        group: node.getGroupByTopic(topic)
-                    });
+
+                    var parts = topic.split('/')
+                    if (parts[2] == 'accessories') {
+                        var uid = parts[3]+'_'+parts[4];
+                        if (!(uid in node.current_values)) node.current_values[uid] = {};
+                        node.current_values[uid][parts[6]] = messageString;
+                        node.emit('onMQTTMessage', {
+                            topic: topic,
+                            payload: message.toString(),
+                            service: parts[5],
+                            characteristic: parts[6],
+                            uid: uid,
+                            aid: parts[3],
+                            sid: parts[4]
+                        });
+                    }
+
                 }
-            }
+            // }
         }
 
         onClose() {

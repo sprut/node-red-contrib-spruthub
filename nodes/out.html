@@ -45,12 +45,12 @@
         <span data-i18n="help.command_homekit"></span>
     </div>
     <!--brightness_move-->
-    <div class="form-tips help_block help_block__z2m_cmd_brightness_move">
+    <div class="form-tips help_block help_block__spruthub_cmd_brightness_move">
         <strong><span data-i18n="help.description"></span></strong><br>
         <span data-i18n="help.command_brightness_move"></span>
     </div>
     <!--transition-->
-    <div class="help_block help_block__z2m_cmd_brightness help_block__z2m_cmd_state help_block__z2m_cmd_color_temp help_block__z2m_cmd_hue help_block__z2m_cmd_saturation">
+    <div class="help_block help_block__spruthub_cmd_brightness help_block__spruthub_cmd_state help_block__spruthub_cmd_color_temp help_block__spruthub_cmd_hue help_block__spruthub_cmd_saturation">
         <strong><span data-i18n="help.options"></span></strong><br>
 
         <div class="form-row">
@@ -64,8 +64,8 @@
 
 <script type='text/javascript'>
     RED.nodes.registerType('spruthub-out', {
-        category: 'SprutHub',
-        color: '#FDBF48',
+        category: 'Sprut.hub',
+        color: '#000000',
         align: 'right',
         defaults: {
             name: {
@@ -87,7 +87,7 @@
                 value: '/set',
             },
             commandType: {
-                value: 'z2m_cmd',
+                value: 'spruthub_cmd',
             },
             payload: {
                 value: 'payload',
@@ -104,9 +104,9 @@
         paletteLabel: 'out',
         inputs: 1,
         outputs: 0,
-        icon: "icon.png",
+        icon: "logo_white.png",
         label: function() {
-            var label = 'z2m-out';
+            var label = 'spruthub-out';
 
             if (this.name) {
                 label = this.name;
@@ -117,13 +117,16 @@
             }
             return label;
         },
+        labelStyle: function () {
+            return "node_label_white";
+        },
         oneditprepare: function() {
             var node = this;
 
             var topicTypes = {
-                value: 'z2m_cmd',
+                value: 'spruthub_cmd',
                 label: 'spruthub',
-                icon: 'icons/node-red-contrib-spruthub/icon.png',
+                icon: 'icons/node-red-contrib-spruthub/logo_white.png',
                 options: [
                     {'value':'state', 'label':'State (on|off|toggle)'},
                     {'value':'brightness', 'label':'Brightness (0..255)'},
@@ -182,9 +185,9 @@
 
                 if (options.length) {
                     var payloadTypes = {
-                        value: 'z2m_payload',
+                        value: 'spruthub_payload',
                         label: 'spruthub',
-                        icon: 'icons/node-red-contrib-spruthub/icon.png',
+                        icon: 'icons/node-red-contrib-spruthub/logo_white.png',
                         options: options
                     };
                     $('#node-input-payload').typedInput('types', [payloadTypes, 'msg', 'flow', 'global', 'str', 'num', 'json']);
@@ -205,9 +208,9 @@
 
             //init typedInput
             var payloadTypes = {
-                value: 'z2m_payload',
+                value: 'spruthub_payload',
                 label: 'spruthub',
-                icon: 'icons/node-red-contrib-spruthub/icon.png',
+                icon: 'icons/node-red-contrib-spruthub/logo_white.png',
                 options: []
             };
             $('#node-input-payload').typedInput({
@@ -224,19 +227,19 @@
             setTimeout(function(){
                 var $deviceInput = $('#node-input-device_id');
 
-                z2m_getItemList(node.device_id, '#node-input-device_id', {allowEmpty:false});
+                spruthub_getItemList(node.device_id, '#node-input-device_id', {allowEmpty:false});
                 showHelpBlock();
                 // $deviceInput.on('change', function(){
-                //     z2m_getItemStateList(0, '#node-input-state');
+                //     spruthub_getItemStateList(0, '#node-input-state');
                 // });
                 // setTimeout(function () {
-                //     z2m_getItemStateList(node.state, '#node-input-state');
+                //     spruthub_getItemStateList(node.state, '#node-input-state');
                 // },100);
             }, 100); //we need small timeout, too fire change event for server select
 
             function showHelpBlock() {
                 var command = $('#node-input-command').val(); //state
-                var commandType = $('#node-input-commandType').val(); //z2m_cmd
+                var commandType = $('#node-input-commandType').val(); //spruthub_cmd
                 var payload = $('#node-input-payloadType').val(); //msg
                 var payloadType = $('#node-input-payload').val(); //payload
                 if (command == '{}') command = 'json';

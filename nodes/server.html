@@ -6,27 +6,69 @@
         <label for="node-config-input-name" class="l-width"><i class="fa fa-bookmark"></i> <span data-i18n="label.name"></span></label>
         <input type="text" id="node-config-input-name">
     </div>
+
+    <hr>
+    <h3>Sprut.hub</h3>
     <div class="form-row">
         <label for="node-config-input-host" class="l-width"><i class="fa fa-location-arrow"></i> <span data-i18n="label.host"></span></label>
         <input type="text" id="node-config-input-host">
     </div>
     <div class="form-row">
-        <label for="node-config-input-base_topic" class="l-width"><i class="fa fa-bookmark"></i> <span data-i18n="label.base_topic"></span></label>
-        <input type="text" id="node-config-input-base_topic" placeholder="spruthub">
+        <label for="node-config-input-email" class="l-width"><i class="fa fa-envelope-o"></i> <span data-i18n="label.email"></span></label>
+        <input type="text" id="node-config-input-email">
     </div>
     <div class="form-row">
-        <label for="node-config-input-mqtt_port" class="l-width"><i class="fa fa-asterisk"></i> <span data-i18n="label.mqtt_port"></span></label>
-        <input type="text" id="node-config-input-mqtt_port" placeholder="1883">
+        <label for="node-config-input-password" class="l-width"><i class="fa fa-lock"></i> <span data-i18n="label.password"></span></label>
+        <input type="password" id="node-config-input-password" autocomplete="new-password">
+    </div>
+<!--    <hr>-->
+<!--    <h3>MQTT</h3>-->
+
+<!--    <div class="form-row">-->
+<!--        <label for="node-config-input-mqtt_username" class="l-width"><i class="fa fa-user"></i> <span data-i18n="label.mqtt_username"></span></label>-->
+<!--        <input type="text" id="node-config-input-mqtt_username">-->
+<!--    </div>-->
+<!--    <div class="form-row">-->
+<!--        <label for="node-config-input-mqtt_password" class="l-width"><i class="fa fa-lock"></i> <span data-i18n="label.mqtt_password"></span></label>-->
+<!--        <input type="password" id="node-config-input-mqtt_password" autocomplete="new-password">-->
+<!--    </div>-->
+<!--        <div class="form-row">-->
+<!--        <label for="node-config-input-mqtt_port" class="l-width"><i class="fa fa-asterisk"></i> <span data-i18n="label.mqtt_port"></span></label>-->
+<!--        <input type="text" id="node-config-input-mqtt_port" placeholder="44444">-->
+<!--    </div>-->
+
+
+
+    <hr>
+    <h3 data-i18n="label.test_connection"></h3>
+<!--    <div class="form-row">-->
+<!--        <label for="node-config-input-token" class="l-width"><i class="fa fa-key"></i> <span data-i18n="label.token"></span></label>-->
+<!--        <input type="text" id="node-config-input-token" readonly="readonly">-->
+<!--    </div>-->
+    <div class="form-row">
+        <a style="width: 100px" class="red-ui-button" id="test-connection" name="test-connection"><span data-i18n="label.check"></span></a>
+	</div>
+
+<div id="sh_check_block" style="display:none;">
+    <div class="form-row">
+        <label for="sh_mqtt" style="width:200px;"></i> <span data-i18n="label.sh_mqtt"></span></label>
+        <b><span id="sh_mqtt"><i class="fa fa-spin fa-spinner"></i></span></b>
     </div>
     <div class="form-row">
-        <label for="node-config-input-mqtt_username" class="l-width"><i class="fa fa-user"></i> <span data-i18n="label.mqtt_username"></span></label>
-        <input type="text" id="node-config-input-mqtt_username" autocomplete="new-password">
+        <label for="sh_auth" style="width:200px;"></i> <span data-i18n="label.sh_auth"></span></label>
+        <b><span id="sh_auth"><i class="fa fa-spin fa-spinner"></i></span></b>
     </div>
     <div class="form-row">
-        <label for="node-config-input-mqtt_password" class="l-width"><i class="fa fa-lock"></i> <span data-i18n="label.mqtt_password"></span></label>
-        <input type="password" id="node-config-input-mqtt_password" autocomplete="new-password">
+        <label for="sh_version" style="width:200px;"></i> <span data-i18n="label.sh_version"></span></label>
+        <b><span id="sh_version"><i class="fa fa-spin fa-spinner"></i></span></b>
     </div>
-    <div class="form-tips" data-i18n="[html]tip.deploy"></div>
+    <div class="form-row">
+        <label for="sh_accessories_cnt" style="width:200px;"></i> <span data-i18n="label.sh_accessories_cnt"></span></label>
+        <b><span id="sh_accessories_cnt"><i class="fa fa-spin fa-spinner"></i></span></b>
+    </div>
+</div>
+
+    <div style="width: 100%" class="form-tips" data-i18n="[html]tip.deploy"></div>
 
 </script>
 
@@ -42,25 +84,59 @@
                 value: null,
                 required: true
             },
-            mqtt_port: {
-                value: 1883,
-                required: false
-            },
-            mqtt_username: {
+            email: {
                 value: null,
-                required: false
-            },
-            mqtt_password: {
-                value: null,
-                required: false
-            },
-            base_topic: {
-                value: 'spruthub',
                 required: true
             },
+            password: {
+                value: null,
+                required: true
+            }//,
+            // token: {
+            //     value: null,
+            //     required: false
+            // },
+            // mqtt_port: {
+            //     value: 44444,
+            //     required: false
+            // },
+            // mqtt_username: {
+            //     value: null,
+            //     required: false
+            // },
+            // mqtt_password: {
+            //     value: null,
+            //     required: false
+            // }
         },
         label: function() {
             return this.name ||  this.host;
+        },
+        oneditprepare: function () {
+            var node = this;
+            var $testBtn = $('#test-connection');
+            var spinner = '<i class="fa fa-spin fa-spinner"></i></span>';
+
+            $testBtn.off('click').on('click', function(){
+                $('#sh_auth').html(spinner);
+                $('#sh_version').html(spinner);
+                $('#sh_accessories_cnt').html(spinner);
+                $('#sh_mqtt').html(spinner);
+                $('#sh_check_block').show();
+                $.getJSON('spruthub/checkConnection', {
+                    controllerID: node.id,
+                    host:$('#node-config-input-host').val(),
+                    email:$('#node-config-input-email').val(),
+                    password:$('#node-config-input-password').val(),
+                    // mqtt_username:$('#node-config-input-mqtt_username').val(),
+                    // mqtt_password:$('#node-config-input-mqtt_password').val()
+                }).done(function (data, textStatus, jqXHR) {
+                    $('#sh_auth').text(data.auth?RED._("node-red-contrib-spruthub/server:label.ok"):RED._("node-red-contrib-spruthub/server:label.error")).css('color', data.auth?"green":"red");
+                    $('#sh_version').text(data.version?data.version:RED._("node-red-contrib-spruthub/server:label.error")).css('color', data.version?"black":"red");
+                    $('#sh_accessories_cnt').text(data.accessories_cnt?data.accessories_cnt:RED._("node-red-contrib-spruthub/server:label.error")).css('color', data.accessories_cnt?"black":"red");
+                    $('#sh_mqtt').text(data.mqtt?RED._("node-red-contrib-spruthub/server:label.ok"):RED._("node-red-contrib-spruthub/server:label.error")).css('color', data.mqtt?"green":"red");
+                });
+            });
         }
     });
 </script>

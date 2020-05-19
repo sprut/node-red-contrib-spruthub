@@ -13,7 +13,9 @@ module.exports = function(RED) {
             node.is_subscribed = false;
             node.cleanTimer = null;
             node.server = RED.nodes.getNode(node.config.server);
+            node.serviceType = undefined;
 
+            // console.log(node.config);
             node.status({}); //clean
 
             if (node.server) {
@@ -45,11 +47,11 @@ module.exports = function(RED) {
 
         onConnectError(status = null) {
             var node = this;
-            node.status({
-                fill: "red",
-                shape: "dot",
-                text: "node-red-contrib-spruthub/in:status.no_connection"
-            });
+            // node.status({
+            //     fill: "red",
+            //     shape: "dot",
+            //     text: "node-red-contrib-spruthub/in:status.no_connection"
+            // });
         }
 
         onMQTTClose() {
@@ -72,8 +74,66 @@ module.exports = function(RED) {
             node.onConnectError();
         }
 
+        getServiceType() {
+            var node = this;
+            if (node.serviceType !== undefined) return node.serviceType;
+
+
+            var uidRaw = (node.config.uid).split('_');
+            var aid = uidRaw[0];
+            var sid = uidRaw[1];
+            var cid = node.config.cid;
+
+            if (!cid) return null;
+
+            var res = {};
+            for (var i in node.server.accessories.accessories) {
+                if (node.server.accessories.accessories[i]['aid'] == aid) {
+                    for (var i2 in node.server.accessories.accessories[i]['services']) {
+                        if (node.server.accessories.accessories[i]['services'][i2]['iid'] == sid) {
+                            for (var i3 in node.server.accessories.accessories[i]['services'][i2]['characteristics']) {
+                                if (node.server.accessories.accessories[i]['services'][i2]['characteristics'][i3]['type'] == cid) {
+                                    res['service'] = node.server.accessories.accessories[i]['services'][i2]['type'];
+                                    res['characteristic'] = node.server.accessories.accessories[i]['services'][i2]['characteristics'][i3]['type'];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            var serviceType = null;
+            loop1:
+            for (var i in node.server.service_types) {
+                if (res['service'] == node.server.service_types[i]['name']) {
+                    loop2:
+                    for (var i2 in node.server.service_types[i]['required']) {
+                        if (node.server.service_types[i]['required'][i2]['name'] == res['characteristic']) {
+                            serviceType = node.server.service_types[i]['required'][i2];
+                            break loop1;
+                        }
+                        if (node.server.service_types[i]['optional'][i2]['name'] == res['characteristic']) {
+                            serviceType = node.server.service_types[i]['optional'][i2];
+                            break loop1;
+                        }
+                    }
+
+                }
+            }
+            node.serviceType = serviceType
+
+            return node.serviceType;
+        }
+
         onMQTTConnect() {
             var node = this;
+
+            // console.log('onMQTTConnect');
+
+            node.sendStatus();
+            // console.log(node.server.current_values[node.config.uid]);
+            // node.current_values[node.config.uid][parts[6]] = messageString;
 
             // node.status({
             //     fill: "green",
@@ -83,76 +143,109 @@ module.exports = function(RED) {
             // node.cleanTimer = setTimeout(function () {
             //     node.status({}); //clean
             // }, 3000);
+
+
+        }
+
+        sendStatus() {
+            var node = this;
+            if (node.config.uid in node.server.current_values) {
+
+                if (node.config.cid) { //output specified characteristic
+                    // console.log(node.config);
+                    // console.log(data.characteristic);
+                    if (node.config.cid in node.server.current_values[node.config.uid]) {
+                        // node.send({
+                        //     topic: data.topic,
+                        //     payload: payload,
+                        //     uid: data.uid,
+                        //     service: data.service,
+                        //     characteristic: data.characteristic
+                        // });
+
+                        var unit = node.getServiceType()?node.getServiceType()['unit']:'';
+
+                        node.status({
+                            fill: "green",
+                            shape: "dot",
+                            text: node.server.current_values[node.config.uid][node.config.cid] + (unit?' '+unit:'')
+                        });
+                    }
+                } else { //output all
+                    // node.send({
+                    //     topic: data.topic,
+                    //     payload: payload,
+                    //     uid: data.uid,
+                    //     service: data.service,
+                    //     characteristic: data.characteristic
+                    // });
+                    //
+                    // node.status({
+                    //     fill: "green",
+                    //     shape: "dot",
+                    //     text: "node-red-contrib-spruthub/in:status.received"
+                    // });
+                    //
+                    // clearTimeout(node.cleanTimer);
+                    // node.cleanTimer = setTimeout(function () {
+                    //     node.status({});
+                    // }, 3000);
+                }
+
+            }
         }
 
         onMQTTMessage(data) {
             var node = this;
 
-            // console.log(data.group);
-            // console.log(node.config.device_id);
-            if ( (data.device && "ieeeAddr" in data.device && data.device.ieeeAddr == node.config.device_id)
-            || (data.group && "ID" in data.group && data.group.ID == node.config.device_id) ) {
-                //ignore /set
-                if (data.topic.search(new RegExp(node.server.getBaseTopic()+'\/'+node.config.friendly_name+'\/set')) === 0) {
-                    return;
-                }
-// console.log(data.topic);
-// console.log(data.payload);
-                clearTimeout(node.cleanTimer);
+            // console.log(node.config.uid  + "  == "+ data.uid + '  =>  '+data.payload);
+            if (node.config.uid == data.uid) {
                 if (node.firstMsg && !node.config.outputAtStartup) {
                     node.firstMsg = false;
                     return;
                 }
 
+                var payload = SprutHubHelper.isNumber(data.payload)?parseFloat(data.payload):data.payload;
 
-                if (data.device) {
-                    var homekit_payload = SprutHubHelper.payload2homekit(data.payload, data.device);
-                    var format_payload = SprutHubHelper.formatPayload(data.payload, data.device);
-                } else if (data.group) {
-                    var homekit_payload = SprutHubHelper.payload2homekit(data.payload, data.group);
-                    var format_payload = SprutHubHelper.formatPayload(data.payload, data.group);
-                } else {
-                    var homekit_payload = null;
-                    var format_payload = null;
-                }
+                if (node.config.cid) { //output specified characteristic
+                    // console.log(node.config);
+                    // console.log(data.characteristic);
+                    if (node.config.cid == data.characteristic) {
+                        node.send({
+                            topic: data.topic,
+                            payload: payload,
+                            uid: data.uid,
+                            service: data.service,
+                            characteristic: data.characteristic
+                        });
 
-                //text
-                var payload = data.payload;
-                var text = RED._("node-red-contrib-spruthub/in:status.received");
-                if (parseInt(node.config.state) != 0) {
-                    if (node.config.state in data.payload) {
-                        text = data.payload[node.config.state];
-                        payload = data.payload[node.config.state];
-                    } else if (homekit_payload && node.config.state.split("homekit_").join('') in homekit_payload) {
-                        payload = homekit_payload[node.config.state.split("homekit_").join('')];
+                        var unit = node.getServiceType()?node.getServiceType()['unit']:'';
+                        node.status({
+                            fill: "green",
+                            shape: "dot",
+                            text: payload + (unit?' '+unit:'')
+                        });
                     }
-                }
-                if (data.device && "powerSource" in data.device && 'Battery' == data.device.powerSource && "battery" in data.payload && parseInt(data.payload.battery)>0) {
-                    text += ' ⚡'+data.payload.battery+'%';
-                }
+                } else { //output all
+                    node.send({
+                        topic: data.topic,
+                        payload: payload,
+                        uid: data.uid,
+                        service: data.service,
+                        characteristic: data.characteristic
+                    });
 
-                node.send({
-                    payload: payload,
-                    payload_raw: data.payload,
-                    device: data.device,
-                    group: data.group,
-                    homekit: homekit_payload,
-                    format: format_payload
-                });
-
-                node.status({
-                    fill: "green",
-                    shape: "dot",
-                    text: text
-                });
-
-                node.cleanTimer = setTimeout(function () {
                     node.status({
                         fill: "green",
-                        shape: "ring",
-                        text: text
+                        shape: "dot",
+                        text: "node-red-contrib-spruthub/in:status.received"
                     });
-                }, 3000);
+
+                    clearTimeout(node.cleanTimer);
+                    node.cleanTimer = setTimeout(function () {
+                        node.status({});
+                    }, 3000);
+                }
             }
         }
 
