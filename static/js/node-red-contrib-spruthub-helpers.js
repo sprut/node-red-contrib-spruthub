@@ -21,9 +21,10 @@ function spruthub_devicesSelect(val, options) {
         dropWidth: 320,
         width: 320,
         filter: true,
-        filterPlaceholder: RED._("node-red-contrib-spruthub/in:multiselect.filter_devices")
+        filterPlaceholder: RED._("node-red-contrib-spruthub/server:multiselect.filter_devices")
     });
     $select.children().remove();
+    $select.multipleSelect('refresh');
     $select.multipleSelect('disable');
 
     spruthub_characteristicsSelect({}, null);
@@ -45,7 +46,7 @@ function spruthub_devicesSelect(val, options) {
                             $('<option value="' + value.AccessoryInformation.aid+"_"+value2.iid + '">' + value2.characteristics.Name.value + '</option>').appendTo(groupHtml);
 
                             //selected
-                            if (val == value.AccessoryInformation.aid+"_"+value2.iid) {
+                            if (!$enableMultiple.is(':checked') && val == value.AccessoryInformation.aid+"_"+value2.iid) {
                                 characteristics = value2.characteristics;
                             }
                         }
@@ -54,15 +55,27 @@ function spruthub_devicesSelect(val, options) {
             }
         });
 
-        $select.val(val);
         $select.multipleSelect('enable');
         $select.multipleSelect('refresh');
+
+        if ($enableMultiple.is(':checked') && typeof(val) == 'object') {
+            for (var index in val) {
+                $select.multipleSelect('check', val[index]);
+            }
+        } else {
+            $select.multipleSelect('check', val);
+        }
 
         spruthub_characteristicsSelect(devices, options.cid);
 
         $select.off('change').on('change', function(){
-            var selectedValues = $select.multipleSelect('getSelects', 'text');
-            $friendlyName.val(selectedValues.length==1?selectedValues[0]:'');
+            if (!$enableMultiple.is(':checked')) {
+                var selectedValues = $select.multipleSelect('getSelects', 'text');
+                $friendlyName.val(selectedValues.length == 1 ? selectedValues[0] : '');
+            } else {
+                var cnt = $select.multipleSelect('getSelects').length;
+                $friendlyName.val(cnt + " " + (cnt > 1?RED._("node-red-contrib-spruthub/server:label.accessories"):RED._("node-red-contrib-spruthub/server:label.accessory")));
+            }
 
             var selectedCharacteristic = $characteristic.multipleSelect('getSelects');
             spruthub_characteristicsSelect(devices, selectedCharacteristic.length?selectedCharacteristic[0]:null);
@@ -104,7 +117,7 @@ function spruthub_characteristicsSelect(devices, cid) {
         filter: false
     });
     $characteristic.children().remove();
-    $('<option value="0">' + RED._("node-red-contrib-spruthub/in:multiselect.all") + '</option>').appendTo($characteristic);
+    $('<option value="0">' + RED._("node-red-contrib-spruthub/server:multiselect.all") + '</option>').appendTo($characteristic);
 
 
     if (enableMultiple) {

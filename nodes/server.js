@@ -411,15 +411,11 @@ module.exports = function (RED) {
                     if (parts[2] == 'accessories') {
                         var uid = parts[3]+'_'+parts[4];
                         if (!(uid in node.current_values)) node.current_values[uid] = {};
-                        node.current_values[uid][parts[6]] = messageString;
+
+                        var value = SprutHubHelper.isNumber(messageString)?parseFloat(messageString):messageString;
+                        node.current_values[uid][parts[6]] = value;
                         node.emit('onMQTTMessage', {
-                            topic: topic,
-                            payload: message.toString(),
-                            service: parts[5],
-                            characteristic: parts[6],
-                            uid: uid,
-                            aid: parts[3],
-                            sid: parts[4]
+                            uid: uid
                         });
                     }
 

@@ -15,10 +15,17 @@ module.exports = function(RED) {
             node.server = RED.nodes.getNode(node.config.server);
             node.serviceType = undefined;
 
-            // console.log(node.config);
             node.status({}); //clean
 
-            if (node.server) {
+            // console.log(node.config);
+
+            if (typeof(node.config.uid) != 'object' || !(node.config.uid).length) {
+                node.status({
+                    fill: "red",
+                    shape: "dot",
+                    text: "node-red-contrib-spruthub/server:status.no_accessory"
+                });
+            } else if (node.server) {
                 node.listener_onMQTTConnect = function(data) { node.onMQTTConnect(); }
                 node.server.on('onMQTTConnect', node.listener_onMQTTConnect);
 
@@ -40,7 +47,7 @@ module.exports = function(RED) {
                 node.status({
                     fill: "red",
                     shape: "dot",
-                    text: "node-red-contrib-spruthub/in:status.no_server"
+                    text: "node-red-contrib-spruthub/server:status.no_server"
                 });
             }
         }
@@ -50,7 +57,7 @@ module.exports = function(RED) {
             // node.status({
             //     fill: "red",
             //     shape: "dot",
-            //     text: "node-red-contrib-spruthub/in:status.no_connection"
+            //     text: "node-red-contrib-spruthub/server:status.no_connection"
             // });
         }
 
@@ -74,36 +81,49 @@ module.exports = function(RED) {
             node.onConnectError();
         }
 
-        getServiceType() {
+        getServiceType(uid) {
             var node = this;
             if (node.serviceType !== undefined) return node.serviceType;
 
 
-            var uidRaw = (node.config.uid).split('_');
+            var uidRaw = uid.split('_');
             var aid = uidRaw[0];
             var sid = uidRaw[1];
-            var cid = node.config.cid;
+            var cid = node.config.cid!='0'?node.config.cid:false;
 
-            if (!cid) return null;
 
             var res = {};
+            loop1:
             for (var i in node.server.accessories.accessories) {
                 if (node.server.accessories.accessories[i]['aid'] == aid) {
+                    loop2:
                     for (var i2 in node.server.accessories.accessories[i]['services']) {
                         if (node.server.accessories.accessories[i]['services'][i2]['iid'] == sid) {
-                            for (var i3 in node.server.accessories.accessories[i]['services'][i2]['characteristics']) {
-                                if (node.server.accessories.accessories[i]['services'][i2]['characteristics'][i3]['type'] == cid) {
-                                    res['service'] = node.server.accessories.accessories[i]['services'][i2]['type'];
-                                    res['characteristic'] = node.server.accessories.accessories[i]['services'][i2]['characteristics'][i3]['type'];
+                            if (cid) {
+                                for (var i3 in node.server.accessories.accessories[i]['services'][i2]['characteristics']) {
+                                    if (node.server.accessories.accessories[i]['services'][i2]['characteristics'][i3]['type'] == cid) {
+                                        res['service'] = node.server.accessories.accessories[i]['services'][i2];
+                                        res['characteristic'] = node.server.accessories.accessories[i]['services'][i2]['characteristics'][i3];
+                                        break loop1;
+                                    }
                                 }
+                            } else {
+                                res['service'] = node.server.accessories.accessories[i]['services'][i2];
+                                break loop1;
                             }
                         }
                     }
                 }
             }
 
+            if (!cid) {
+                node.serviceType = res;
+                return node.serviceType;
+            }
 
-            var serviceType = null;
+
+
+            var serviceType = {};
             loop1:
             for (var i in node.server.service_types) {
                 if (res['service'] == node.server.service_types[i]['name']) {
@@ -121,124 +141,122 @@ module.exports = function(RED) {
 
                 }
             }
-            node.serviceType = serviceType
+            serviceType['service'] = res['service'];
+            serviceType['characteristic'] = res['characteristic'];
+            node.serviceType = serviceType;
+
 
             return node.serviceType;
         }
 
         onMQTTConnect() {
-            var node = this;
-
-            // console.log('onMQTTConnect');
-
-            node.sendStatus();
-            // console.log(node.server.current_values[node.config.uid]);
-            // node.current_values[node.config.uid][parts[6]] = messageString;
-
-            // node.status({
-            //     fill: "green",
-            //     shape: "dot",
-            //     text: "node-red-contrib-spruthub/in:status.connected"
-            // });
-            // node.cleanTimer = setTimeout(function () {
-            //     node.status({}); //clean
-            // }, 3000);
-
-
+            this.sendStatus();
         }
 
-        sendStatus() {
+        _sendStatusMultiple() {
             var node = this;
-            if (node.config.uid in node.server.current_values) {
+            var uidArr = node.config.uid;
 
-                if (node.config.cid) { //output specified characteristic
-                    // console.log(node.config);
-                    // console.log(data.characteristic);
-                    if (node.config.cid in node.server.current_values[node.config.uid]) {
-                        // node.send({
-                        //     topic: data.topic,
-                        //     payload: payload,
-                        //     uid: data.uid,
-                        //     service: data.service,
-                        //     characteristic: data.characteristic
-                        // });
+            var payload  = [];
+            for (var i in uidArr) {
+                var uid = uidArr[i];
 
-                        var unit = node.getServiceType()?node.getServiceType()['unit']:'';
-
-                        node.status({
-                            fill: "green",
-                            shape: "dot",
-                            text: node.server.current_values[node.config.uid][node.config.cid] + (unit?' '+unit:'')
-                        });
-                    }
-                } else { //output all
-                    // node.send({
-                    //     topic: data.topic,
-                    //     payload: payload,
-                    //     uid: data.uid,
-                    //     service: data.service,
-                    //     characteristic: data.characteristic
-                    // });
-                    //
-                    // node.status({
-                    //     fill: "green",
-                    //     shape: "dot",
-                    //     text: "node-red-contrib-spruthub/in:status.received"
-                    // });
-                    //
-                    // clearTimeout(node.cleanTimer);
-                    // node.cleanTimer = setTimeout(function () {
-                    //     node.status({});
-                    // }, 3000);
+                if (uid in node.server.current_values) {
+                    payload.push(node.server.current_values[uid]);
                 }
-
             }
+
+            if (node.firstMsg && !node.config.outputAtStartup) {
+                node.firstMsg = false;
+                return;
+            }
+
+            node.send({
+                payload: payload,
+                math:SprutHubHelper.formatMath(payload)
+            });
+
+            node.status({
+                fill: "green",
+                shape: "dot",
+                text: "node-red-contrib-spruthub/server:status.received"
+            });
+
+            clearTimeout(node.cleanTimer);
+            node.cleanTimer = setTimeout(function () {
+                node.status({});
+            }, 3000);
         }
 
-        onMQTTMessage(data) {
+        _sendStatusSingle() {
             var node = this;
+            var uid = node.config.uid[0];
+            var cid = node.config.cid!='0'?node.config.cid:false;
 
-            // console.log(node.config.uid  + "  == "+ data.uid + '  =>  '+data.payload);
-            if (node.config.uid == data.uid) {
-                if (node.firstMsg && !node.config.outputAtStartup) {
-                    node.firstMsg = false;
-                    return;
-                }
+            if (uid in node.server.current_values) {
+                var meta = node.getServiceType(uid);
 
-                var payload = SprutHubHelper.isNumber(data.payload)?parseFloat(data.payload):data.payload;
+                if (cid) { //output specified characteristic
+                    if (cid in node.server.current_values[uid]) {
 
-                if (node.config.cid) { //output specified characteristic
-                    // console.log(node.config);
-                    // console.log(data.characteristic);
-                    if (node.config.cid == data.characteristic) {
+                        var payload = node.server.current_values[uid][cid];
+                        payload = SprutHubHelper.isNumber(payload)?parseFloat(payload):payload;
+                        var topic = node.server.getBaseTopic()+'/accessories/'+uid+'/'+meta['service']['type']+'/'+meta['characteristic']['type'];
+
+                        var unit = meta && "characteristic" in meta && "unit" in meta['characteristic']?meta['characteristic']['unit']:'';
+                        if (unit) unit = RED._("node-red-contrib-spruthub/server:unit."+unit, ""); //add translation
+
+
+                        if (node.firstMsg && !node.config.outputAtStartup) {
+                            node.firstMsg = false;
+
+                            node.status({
+                                fill: "green",
+                                shape: "ring",
+                                text: payload + (unit?' '+unit:'')
+                            });
+                            return;
+                        }
                         node.send({
-                            topic: data.topic,
+                            topic: topic,
                             payload: payload,
-                            uid: data.uid,
-                            service: data.service,
-                            characteristic: data.characteristic
+                            meta: meta
                         });
 
-                        var unit = node.getServiceType()?node.getServiceType()['unit']:'';
                         node.status({
                             fill: "green",
                             shape: "dot",
                             text: payload + (unit?' '+unit:'')
                         });
+                        clearTimeout(node.cleanTimer);
+                        node.cleanTimer = setTimeout(function () {
+                            node.status({
+                                fill: "green",
+                                shape: "ring",
+                                text: payload + (unit?' '+unit:'')
+                            });
+                        }, 3000);
                     }
+
                 } else { //output all
+                    var payload = node.server.current_values[uid];
+                    var topic = node.server.getBaseTopic()+'/accessories/'+uid+'/'+meta['service']['type']+'/#';
+
+                    if (node.firstMsg && !node.config.outputAtStartup) {
+                        node.firstMsg = false;
+                        return;
+                    }
+
                     node.send({
-                        topic: data.topic,
+                        topic: topic,
                         payload: payload,
-                        uid: data.uid,
-                        service: data.service,
-                        characteristic: data.characteristic
+                        meta: meta
                     });
 
                     node.status({
                         fill: "green",
                         shape: "dot",
-                        text: "node-red-contrib-spruthub/in:status.received"
+                        text: "node-red-contrib-spruthub/server:status.received"
                     });
 
                     clearTimeout(node.cleanTimer);
@@ -246,6 +264,31 @@ module.exports = function(RED) {
                         node.status({});
                     }, 3000);
                 }
+
+            } else {
+                node.status({
+                    fill: "red",
+                    shape: "dot",
+                    text: "node-red-contrib-spruthub/server:status.no_value"
+                });
+            }
+        }
+
+        sendStatus() {
+            if (!this.config.uid) return;
+
+            if (this.config.enableMultiple) {
+                this._sendStatusMultiple();
+            } else {
+                this._sendStatusSingle();
+            }
+        }
+
+        onMQTTMessage(data) {
+            var node = this;
+
+            if (node.config.uid && (node.config.uid).includes(data.uid)) {
+                node.sendStatus();
             }
         }
 

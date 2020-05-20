@@ -3,40 +3,40 @@
     <link rel="stylesheet" href="spruthub/static/css/common.css" type="text/css" />
 
     <div class="form-row">
-        <label for="node-input-name" class="l-width"><i class="fa fa-bookmark"></i> <span data-i18n="label.name"></span></label>
-        <input type="text" id="node-input-name" data-i18n="[placeholder]placeholder.name">
+        <label for="node-input-name" class="l-width"><i class="fa fa-bookmark"></i> <span data-i18n="node-red-contrib-spruthub/server:label.name"></span></label>
+        <input type="text" id="node-input-name" data-i18n="[placeholder]node-red-contrib-spruthub/server:placeholder.name">
     </div>
     <div class="form-row" style="display:none;">
-        <label for="node-input-friendly_name" class="l-width"><i class="fa fa-bookmark"></i> <span data-i18n="label.friendly_name"></span></label>
-        <input type="text" id="node-input-friendly_name" data-i18n="[placeholder]placeholder.friendly_name">
+        <label for="node-input-friendly_name" class="l-width"><i class="fa fa-bookmark"></i> <span data-i18n="node-red-contrib-spruthub/server:label.friendly_name"></span></label>
+        <input type="text" id="node-input-friendly_name" data-i18n="[placeholder]node-red-contrib-spruthub/server:placeholder.friendly_name">
     </div>
     <div class="form-row">
-        <label for="node-input-server" class="l-width"><i class="fa fa-globe"></i> <span data-i18n="label.server"></span></label>
+        <label for="node-input-server" class="l-width"><i class="fa fa-globe"></i> <span data-i18n="node-red-contrib-spruthub/server:label.server"></span></label>
         <input type="text" id="node-input-server">
     </div>
     <div class="form-row">
-        <label for="node-input-uid" class="l-width"><i class="fa fa-crosshairs"></i> <span data-i18n="label.uid"></span></label>
-        <select id="node-input-uid" class="s-width"></select>
+        <label for="node-input-uid" class="l-width"><i class="fa fa-crosshairs"></i> <span data-i18n="node-red-contrib-spruthub/server:label.uid"></span></label>
+        <select id="node-input-uid" class="s-width" multiple="multiple"></select>
     </div>
     <div class="form-row" id="sh_cid_wr" style="display:none;">
-        <label for="node-input-cid" class="l-width"><i class="fa fa-tag"></i> <span data-i18n="label.cid"></span></label>
-        <select id="node-input-cid" class="s-width"  data-i18n="[placeholder]multiselect.complete_payload"></select>
+        <label for="node-input-cid" class="l-width"><i class="fa fa-tag"></i> <span data-i18n="node-red-contrib-spruthub/server:label.cid"></span></label>
+        <select id="node-input-cid" class="s-width"  data-i18n="[placeholder]node-red-contrib-spruthub/server:multiselect.complete_payload"></select>
     </div>
     <div class="form-row">
         <label for='node-input-showHidden' class="l-width"></label>
-        <input type="checkbox" id="node-input-showHidden" style="display: inline-block; width: auto; vertical-align: top;"> <span data-i18n="label.show_hidden"></span></input>
+        <input type="checkbox" id="node-input-showHidden" style="display: inline-block; width: auto; vertical-align: top;"> <span data-i18n="node-red-contrib-spruthub/server:label.show_hidden"></span></input>
     </div>
     <div class="form-row">
         <label for='node-input-enableMultiple' class="l-width"></label>
-        <input type="checkbox" id="node-input-enableMultiple" style="display: inline-block; width: auto; vertical-align: top;"> <span data-i18n="label.enable_multiple"></span></input>
+        <input type="checkbox" id="node-input-enableMultiple" style="display: inline-block; width: auto; vertical-align: top;"> <span data-i18n="node-red-contrib-spruthub/server:label.enable_multiple"></span></input>
     </div>
     <div class="form-row">
-        <label for='node-input-outputAtStartup' class="l-width"><i class='fa fa-share-square'></i> <span data-i18n="label.start_output"></span></label>
-        <input type="checkbox" id="node-input-outputAtStartup" checked="checked" style="display: inline-block; width: auto; vertical-align: top;"> <span data-i18n="label.start_output_help"></span></input>
+        <label for='node-input-outputAtStartup' class="l-width"><i class='fa fa-share-square'></i> <span data-i18n="node-red-contrib-spruthub/server:label.start_output"></span></label>
+        <input type="checkbox" id="node-input-outputAtStartup" checked="checked" style="display: inline-block; width: auto; vertical-align: top;"> <span data-i18n="node-red-contrib-spruthub/server:label.start_output_help"></span></input>
     </div>
         <div class="form-row">
-        <label for="force-refresh" class="l-width"><i class="fa fa-refresh"></i> <span data-i18n="label.refresh"></span></label>
-        <a class="red-ui-button s-width" id="force-refresh" name="force-refresh"><span data-i18n="label.refresh_list"></span></a>
+        <label for="force-refresh" class="l-width"><i class="fa fa-refresh"></i> <span data-i18n="node-red-contrib-spruthub/server:label.refresh"></span></label>
+        <a class="red-ui-button s-width" id="force-refresh" name="force-refresh"><span data-i18n="node-red-contrib-spruthub/server:label.refresh_list"></span></a>
     </div>
 </script>
 
@@ -67,8 +67,10 @@
                 required: false
             },
             uid: {
-                value: null,
-                required: true
+                required: true,
+                validate:function(v) {
+                    return typeof(v)=="object" && v.length;
+                }
             },
             cid: {
                 value: null,
@@ -116,14 +118,6 @@
             },100);
         },
         oneditsave: function () {
-            var selectedOptions = $('#node-input-uid option:selected');
-            if (selectedOptions) {
-                this.topic = selectedOptions.map(function () {
-                    return $(this).val();
-                });
-            } else {
-                this.topic = null;
-            }
         }
     });
 
