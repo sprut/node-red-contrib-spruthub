@@ -27,13 +27,17 @@
         "start_output": "Start Output",
         "start_output_help": "Send value on start",
         "accessories": "accessories",
-        "accessory": "accessory"
+        "accessory": "accessory",
+        "command": "Command",
+        "payload": "Payload"
     },
     "placeholder": {
         "name": "Name"
     },
     "status": {
-        "no_server": "no server",
+        "no_payload": "no payload",
+        "invalid_payload": "invalid payload",
+        "no_characteristic": "no characteristic",
         "no_accessory": "no accessory",
         "no_value": "no value",
         "no_device": "no device",
@@ -69,6 +73,7 @@
         "devices": "Accessories",
         "filter_devices": "Filter accessories...",
         "refresh": "Refresh list",
-        "none_selected": "None selected"
+        "none_selected": "None selected",
+        "required": ""
     }
 }

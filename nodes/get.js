@@ -10,109 +10,142 @@ module.exports = function(RED) {
             var node = this;
             node.config = config;
             node.cleanTimer = null;
-            node.is_subscribed = false;
             node.server = RED.nodes.getNode(node.config.server);
+            node.serviceType = undefined;
+            node.message_in = null;
+            node.config.cid = node.config.cid==='0'?'':node.config.cid;
 
 
-            if (node.server)  {
+            if (typeof(node.config.uid) != 'object' || !(node.config.uid).length) {
+                node.status({
+                    fill: "red",
+                    shape: "dot",
+                    text: "node-red-contrib-spruthub/server:status.no_accessory"
+                });
+            } else if (node.server)  {
                 node.on('input', function (message_in) {
-                    clearTimeout(node.cleanTimer);
+                    node.message_in = message_in;
+                    node.sendStatus();
+                });
+            } else {
+                node.status({
+                    fill: "red",
+                    shape: "dot",
+                    text: "node-red-contrib-spruthub/server:status.no_server"
+                });
+            }
+        }
 
-                    if (node.config.device_id) {
+        _sendStatusMultiple() {
+            var node = this;
+            var uidArr = node.config.uid;
 
+            var payload  = [];
+            for (var i in uidArr) {
+                var uid = uidArr[i];
 
-                        var device = node.server.getDeviceById(node.config.device_id);
-                        var group = node.server.getGroupById(node.config.device_id);
-                        if (device) {
-                            if ("lastPayload" in device) {
-                                var homekit_payload = SprutHubHelper.payload2homekit(device.lastPayload, device);
-                                var format_payload = SprutHubHelper.formatPayload(device.lastPayload, device);
-                                var result = device.lastPayload;
-                                var text = RED._("node-red-contrib-spruthub/get:status.received");
-                                if (parseInt(node.config.state) != 0 && node.config.state in device.lastPayload) {
-                                    result = device.lastPayload[node.config.state];
-                                    text = device.lastPayload[node.config.state];
-                                } else if (homekit_payload && node.config.state.split("homekit_").join('') in homekit_payload) {
-                                    result = homekit_payload[node.config.state.split("homekit_").join('')];
-                                }
+                if (uid in node.server.current_values) {
+                    payload.push(node.server.current_values[uid]);
+                }
+            }
 
-                                message_in.payload_in = message_in.payload;
-                                message_in.payload = result;
-                                message_in.payload_raw = device.lastPayload;
-                                message_in.device = device;
-                                message_in.homekit = homekit_payload;
-                                message_in.format = format_payload;
-                                node.send(message_in);
+            node.send({
+                payload: payload,
+                payload_in: node.message_in,
+                math:SprutHubHelper.formatMath(payload)
+            });
 
-                                node.status({
-                                    fill: "green",
-                                    shape: "dot",
-                                    text: text
-                                });
+            node.status({
+                fill: "green",
+                shape: "dot",
+                text: "node-red-contrib-spruthub/server:status.received"
+            });
+            clearTimeout(node.cleanTimer);
+            node.cleanTimer = setTimeout(function () {
+                node.status({});
+            }, 3000);
+        }
 
-                                node.cleanTimer = setTimeout(function () {
-                                    node.status({});
-                                }, 3000);
-                            }
-                        } else if (group) {
-                            if ("lastPayload" in group) {
-                                var homekit_payload = SprutHubHelper.payload2homekit(group.lastPayload, group);
-                                var format_payload = SprutHubHelper.formatPayload(group.lastPayload, group);
-                                var result = group.lastPayload;
-                                var text = RED._("node-red-contrib-spruthub/get:status.received");
-                                if (parseInt(node.config.state) != 0 && node.config.state in group.lastPayload) {
-                                    result = group.lastPayload[node.config.state];
-                                    text = group.lastPayload[node.config.state];
-                                } else if (homekit_payload && node.config.state.split("homekit_").join('') in homekit_payload) {
-                                    result = homekit_payload[node.config.state.split("homekit_").join('')];
-                                }
+        _sendStatusSingle() {
+            var node = this;
+            var uid = node.config.uid[0];
+            var cid = node.config.cid?node.config.cid:false;
 
-                                message_in.payload_in = message_in.payload;
-                                message_in.payload = result;
-                                message_in.payload_raw = group.lastPayload;
-                                message_in.homekit = homekit_payload;
-                                message_in.format = format_payload;
-                                node.send(message_in);
+            if (uid in node.server.current_values) {
+                var meta = node.getServiceType(uid);
+                if (!meta) return;
 
-                                node.status({
-                                    fill: "green",
-                                    shape: "dot",
-                                    text: text
-                                });
+                if (cid) { //output specified characteristic
+                    if (cid in node.server.current_values[uid]) {
 
-                                node.cleanTimer = setTimeout(function () {
-                                    node.status({});
-                                }, 3000);
-                            }
-                        } else {
-                            node.warn('Empty devices list. Bug?');
-                            node.status({
-                                fill: "red",
-                                shape: "dot",
-                                text: "node-red-contrib-spruthub/get:status.no_device"
-                            });
-                        }
+                        var payload = node.server.current_values[uid][cid];
+                        payload = SprutHubHelper.isNumber(payload)?parseFloat(payload):payload;
+                        var topic = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/'+meta['service']['type']+'/'+meta['characteristic']['type'];
 
-                    } else {
-                        node.status({
-                            fill: "red",
-                            shape: "dot",
-                            text: "node-red-contrib-spruthub/get:status.no_device"
-                        });
+                        var unit = meta && "characteristic" in meta && "unit" in meta['characteristic']?meta['characteristic']['unit']:'';
+                        if (unit) unit = RED._("node-red-contrib-spruthub/server:unit."+unit, ""); //add translation
+
+                        var text = payload + (unit?' '+unit:'');
+
+                        clearTimeout(node.cleanTimer);
+                        node.cleanTimer = setTimeout(function () {
+                            node.status({text: text});
+                        }, 3000);
+
                     }
+
+                } else { //output all
+                    var payload = node.server.current_values[uid];
+                    var topic = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/'+meta['service']['type']+'/#';
+                    var text =  "node-red-contrib-spruthub/server:status.received";
+
+                    clearTimeout(node.cleanTimer);
+                    node.cleanTimer = setTimeout(function () {
+                        node.status({});
+                    }, 3000);
+                }
+
+                node.send({
+                    topic: topic,
+                    payload: payload,
+                    payload_in: node.message_in,
+                    meta: meta
                 });
 
+                node.status({
+                    fill: "green",
+                    shape: "dot",
+                    text: text
+                });
 
 
             } else {
                 node.status({
                     fill: "red",
                     shape: "dot",
-                    text: "node-red-contrib-spruthub/get:status.no_server"
+                    text: "node-red-contrib-spruthub/server:status.no_value"
                 });
             }
         }
 
+        sendStatus() {
+            if (!this.config.uid) return;
+
+            if (this.config.enableMultiple) {
+                this._sendStatusMultiple();
+            } else {
+                this._sendStatusSingle();
+            }
+        }
+
+        getServiceType(uid) {
+            var node = this;
+            if (node.serviceType !== undefined) {
+                return node.serviceType;
+            } else {
+                return node.server.getServiceType(uid, node.config.cid);
+            }
+        }
     }
     RED.nodes.registerType('spruthub-get', SprutHubNodeGet);
 };

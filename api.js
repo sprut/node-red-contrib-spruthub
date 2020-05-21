@@ -32,7 +32,7 @@ module.exports = function(RED) {
         var force = config.forceRefresh ? ['1', 'yes', 'true'].includes(config.forceRefresh.toLowerCase()) : false;
 
         if (controller && controller.constructor.name === "ServerNode") {
-            controller.getAccessories().then(function(response){
+            controller.getAccessories(true).then(function(response){
                 res.json(SprutHubHelper.convertDevicesData(response));
             }).catch(error => {
                 res.json(error);

@@ -22,18 +22,37 @@ module.exports = function (RED) {
             node.current_values = {};
             node.bridge_config = null;
             node.bridge_state = null;
+            node.connectionTimer = null;
+            node.connectionTimerFlag = false;
             node.on('close', () => this.onClose());
             node.setMaxListeners(0);
 
             node.init();
         }
 
-        async init () {
-            await this.getToken();
-            await this.getAccessories();
-            await this.getServiceTypes();
+        async init() {
+            var node = this;
 
-            //mqtt
+            await this.getToken().catch(error => {
+                console.log(error);
+                node.emit('onConnectError');
+                node.log("Waiting for Sprut.hub, reconnecting in 10 seconds...");
+                setTimeout(function () {
+                    node.init();
+                }, 10000);
+                return false;
+            });
+
+            if (!node.spruthub_token) return;
+
+            node.log('Sprut.hub initialized!')
+            await this.getAccessories().catch(error => {
+                console.log(error);
+            });
+            await this.getServiceTypes().catch(error => {
+                console.log(error);
+            });
+
             this.mqtt = this.connectMQTT();
             this.mqtt.on('connect', () => this.onMQTTConnect());
             this.mqtt.on('message', (topic, message) => this.onMQTTMessage(topic, message));
@@ -55,7 +74,9 @@ module.exports = function (RED) {
                 port: node.mqtt_port,
                 username: node.config.mqtt_username||null,
                 password: node.config.mqtt_password||null,
-                clientId:"NodeRed-"+node.id+(clientId?"-"+clientId:"")
+                clientId:"NodeRed-"+node.id+(clientId?"-"+clientId:""),
+                connectTimeout: 3000,
+                reconnectPeriod: 3000
             };
             return mqtt.connect('mqtt://' + node.config.host, options);
         }
@@ -105,9 +126,10 @@ module.exports = function (RED) {
                             var regex = /token=([^;]*);/;
                             node.spruthub_token = regex.exec(rawCookie)[1];
                             if (node.spruthub_token) {
+                                node.connection = true;
                                 resolve(node.spruthub_token);
                             } else {
-                                reject({errorMessage:"Token not found"});
+                                reject({errorMessage:"Sprut.hub: Token not found"});
                             }
                         } else {
                             reject({errorMessage:"Cookie was not set"});
@@ -117,7 +139,7 @@ module.exports = function (RED) {
             });
         }
 
-        async getAccessories() {
+        async getAccessories(force = false) {
             var node = this;
 
             var data = await node.getApiCall('/api/homekit/json').catch(error=>{
@@ -146,6 +168,11 @@ module.exports = function (RED) {
         getApiCall(path) {
             var node = this;
             return new Promise(function (resolve, reject) {
+
+                if (!node.spruthub_token) {
+                    reject({errorMessage:"Sprut.hub: Token was not fetch"});
+                }
+
                 var url = "http://" + node.config.host + ":" +node.spruthub_port + path;
 
                 request({
@@ -278,78 +305,78 @@ module.exports = function (RED) {
             node.current_values = values;
         }
 
-        getDevices() {
-            return this.getAccessories();
-        }
-
-
-        getDeviceById(id) {
+        getServiceType(uid, cid = null) {
             var node = this;
-            var result = null;
-            for (var i in node.devices) {
-                if (id == node.devices[i]['ieeeAddr']) {
-                    result = node.devices[i];
-                    result['lastPayload'] = {};
 
-                    var topic =  node.getBaseTopic()+'/'+(node.devices[i]['friendly_name']?node.devices[i]['friendly_name']:node.devices[i]['ieeeAddr']);
-                    if (topic in node.devices_values) {
-                        result['lastPayload'] = node.devices_values[topic];
-                        result['homekit'] = SprutHubHelper.payload2homekit(node.devices_values[topic], node.devices[i])
+            if (!node.accessories || !("accessories" in node.accessories)) return {};
+
+            var uidRaw = uid.split('_');
+            var aid = uidRaw[0];
+            var sid = uidRaw[1];
+            cid = cid!='0'?cid:false;
+
+            var res = {};
+            loop1:
+                for (var i in node.accessories.accessories) {
+                    if (node.accessories.accessories[i]['aid'] == aid) {
+                        loop2:
+                            for (var i2 in node.accessories.accessories[i]['services']) {
+                                if (node.accessories.accessories[i]['services'][i2]['iid'] == sid) {
+                                    if (cid) {
+                                        for (var i3 in node.accessories.accessories[i]['services'][i2]['characteristics']) {
+                                            if (node.accessories.accessories[i]['services'][i2]['characteristics'][i3]['type'] == cid) {
+                                                res['service'] = node.accessories.accessories[i]['services'][i2];
+                                                res['characteristic'] = node.accessories.accessories[i]['services'][i2]['characteristics'][i3];
+                                                break loop1;
+                                            }
+                                        }
+                                    } else {
+                                        res['service'] = node.accessories.accessories[i]['services'][i2];
+                                        break loop1;
+                                    }
+                                }
+                            }
                     }
-                    break;
                 }
+
+            if (!cid) {
+                return res;
             }
-            return result;
-        }
 
 
-        getLastStateById(id) {
-            var node = this;
-            var device = node.getDeviceById(id);
-            if (device) {
-                return device;
-            }
-            var group = node.getGroupById(id);
-            if (group) {
-                return group;
-            }
-            return {};
-        }
 
-        getDeviceByTopic(topic) {
-            var node = this;
-            var result = null;
-            for (var i in node.devices) {
-                if (topic == node.getBaseTopic()+'/'+node.devices[i]['friendly_name']
-                    || topic == node.getBaseTopic()+'/'+node.devices[i]['ieeeAddr']) {
-                    result = node.devices[i];
-                    break;
+            var serviceType = {};
+            loop1:
+                for (var i in node.service_types) {
+                    if (res['service'] == node.service_types[i]['name']) {
+                        loop2:
+                            for (var i2 in node.service_types[i]['required']) {
+                                if (node.service_types[i]['required'][i2]['name'] == res['characteristic']) {
+                                    serviceType = node.service_types[i]['required'][i2];
+                                    break loop1;
+                                }
+                                if (node.service_types[i]['optional'][i2]['name'] == res['characteristic']) {
+                                    serviceType = node.service_types[i]['optional'][i2];
+                                    break loop1;
+                                }
+                            }
+
+                    }
                 }
-            }
-            return result;
+            serviceType['service'] = res['service'];
+            serviceType['characteristic'] = res['characteristic'];
+
+            return serviceType;
         }
-
-
-
-
-
-        setLogLevel(val) {
-            var node = this;
-            if (['info', 'debug', 'warn', 'error'].indexOf(val) < 0) val = 'info';
-            node.mqtt.publish(node.getBaseTopic() + "/bridge/config/log_level", val);
-            node.log('Log Level set to: '+val);
-        }
-
 
 
         async onMQTTConnect() {
             var node = this;
-            node.connection = true;
+
+            node.subscribeMQTT();
+
             node.log('MQTT Connected');
             node.emit('onMQTTConnect');
-
-            // console.log(SprutHubHelper.convertDevicesData(node.accessories));
-            node.subscribeMQTT();
         }
 
         onMQTTDisconnect(error) {
@@ -372,7 +399,7 @@ module.exports = function (RED) {
             var node = this;
             // node.connection = true;
             node.log('MQTT Offline');
-            console.log("MQTT OFFLINE");
+            // console.log("MQTT OFFLINE");
 
         }
 
@@ -396,31 +423,33 @@ module.exports = function (RED) {
             var node = this;
             // node.connection = true;
             node.log('MQTT Close');
+            node.emit('onConnectError');
             // console.log(node.connection);
 
         }
 
         onMQTTMessage(topic, message) {
             var node = this;
+
             var messageString = message.toString();
 
-                //isSet
-                if (topic.substring(topic.length - 4, topic.length) != '/set') {
+            //isSet
+            if (topic.substring(topic.length - 4, topic.length) != '/set') {
 
-                    var parts = topic.split('/')
-                    if (parts[2] == 'accessories') {
-                        var uid = parts[3]+'_'+parts[4];
-                        if (!(uid in node.current_values)) node.current_values[uid] = {};
+                var parts = topic.split('/')
+                if (parts[2] == 'accessories') {
+                    var uid = parts[3]+'_'+parts[4];
+                    if (!(uid in node.current_values)) node.current_values[uid] = {};
 
-                        var value = SprutHubHelper.isNumber(messageString)?parseFloat(messageString):messageString;
-                        node.current_values[uid][parts[6]] = value;
-                        node.emit('onMQTTMessage', {
-                            uid: uid
-                        });
-                    }
+                    var value = SprutHubHelper.convertVarType(messageString);
+                    node.current_values[uid][parts[6]] = value;
 
+                    node.emit('onMQTTMessage', {
+                        uid: uid
+                    });
                 }
-            // }
+
+            }
         }
 
         onClose() {

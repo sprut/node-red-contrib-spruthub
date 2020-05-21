@@ -117,7 +117,13 @@ function spruthub_characteristicsSelect(devices, cid) {
         filter: false
     });
     $characteristic.children().remove();
-    $('<option value="0">' + RED._("node-red-contrib-spruthub/server:multiselect.all") + '</option>').appendTo($characteristic);
+
+    if ($characteristic.data('first')) {
+        $('<option value="">' + RED._($characteristic.data('first')) + '</option>').appendTo($characteristic);
+    } else {
+        $('<option value="">' + RED._("node-red-contrib-spruthub/server:multiselect.all") + '</option>').appendTo($characteristic);
+    }
+
 
 
     if (enableMultiple) {

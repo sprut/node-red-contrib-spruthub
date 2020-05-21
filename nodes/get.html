@@ -3,28 +3,36 @@
     <link rel="stylesheet" href="spruthub/static/css/common.css" type="text/css" />
 
     <div class="form-row">
-        <label for="node-input-name" class="l-width"><i class="fa fa-bookmark"></i> <span data-i18n="label.name"></span></label>
-        <input type="text" id="node-input-name" data-i18n="[placeholder]placeholder.name">
+        <label for="node-input-name" class="l-width"><i class="fa fa-bookmark"></i> <span data-i18n="node-red-contrib-spruthub/server:label.name"></span></label>
+        <input type="text" id="node-input-name" data-i18n="[placeholder]node-red-contrib-spruthub/server:placeholder.name">
     </div>
     <div class="form-row" style="display:none;">
-        <label for="node-input-friendly_name" class="l-width"><i class="fa fa-bookmark"></i> <span data-i18n="label.friendly_name"></span></label>
-        <input type="text" id="node-input-friendly_name" data-i18n="[placeholder]placeholder.friendly_name">
+        <label for="node-input-friendly_name" class="l-width"><i class="fa fa-bookmark"></i> <span data-i18n="node-red-contrib-spruthub/server:label.friendly_name"></span></label>
+        <input type="text" id="node-input-friendly_name" data-i18n="[placeholder]node-red-contrib-spruthub/server:placeholder.friendly_name">
     </div>
     <div class="form-row">
-        <label for="node-input-server" class="l-width"><i class="fa fa-globe"></i> <span data-i18n="label.server"></span></label>
+        <label for="node-input-server" class="l-width"><i class="fa fa-globe"></i> <span data-i18n="node-red-contrib-spruthub/server:label.server"></span></label>
         <input type="text" id="node-input-server">
     </div>
     <div class="form-row">
-        <label for="node-input-device_id" class="l-width"><i class="fa fa-crosshairs"></i> <span data-i18n="label.topic"></span></label>
-        <select id="node-input-device_id" class="s-width" data-single="true"></select>
+        <label for="node-input-uid" class="l-width"><i class="fa fa-crosshairs"></i> <span data-i18n="node-red-contrib-spruthub/server:label.uid"></span></label>
+        <select id="node-input-uid" class="s-width" multiple="multiple"></select>
+    </div>
+    <div class="form-row" id="sh_cid_wr" style="display:none;">
+        <label for="node-input-cid" class="l-width"><i class="fa fa-tag"></i> <span data-i18n="node-red-contrib-spruthub/server:label.cid"></span></label>
+        <select id="node-input-cid" class="s-width"  data-i18n="[placeholder]node-red-contrib-spruthub/server:multiselect.complete_payload"></select>
     </div>
     <div class="form-row">
-        <label for="force-refresh" class="l-width"><i class="fa fa-refresh"></i> <span data-i18n="label.refresh"></span></label>
-        <a class="red-ui-button s-width" id="force-refresh" name="force-refresh"><span data-i18n="label.refresh_devices_list"></span></a>
+        <label for='node-input-showHidden' class="l-width"></label>
+        <input type="checkbox" id="node-input-showHidden" style="display: inline-block; width: auto; vertical-align: top;"> <span data-i18n="node-red-contrib-spruthub/server:label.show_hidden"></span></input>
     </div>
     <div class="form-row">
-        <label for="node-input-state" class="l-width"><i class="fa fa-tag"></i> <span data-i18n="label.state"></span></label>
-        <select id="node-input-state" class="s-width"  data-i18n="[placeholder]multiselect.complete_payload"></select>
+        <label for='node-input-enableMultiple' class="l-width"></label>
+        <input type="checkbox" id="node-input-enableMultiple" style="display: inline-block; width: auto; vertical-align: top;"> <span data-i18n="node-red-contrib-spruthub/server:label.enable_multiple"></span></input>
+    </div>
+    <div class="form-row">
+        <label for="force-refresh" class="l-width"><i class="fa fa-refresh"></i> <span data-i18n="node-red-contrib-spruthub/server:label.refresh"></span></label>
+        <a class="red-ui-button s-width" id="force-refresh" name="force-refresh"><span data-i18n="node-red-contrib-spruthub/server:label.refresh_list"></span></a>
     </div>
 </script>
 
@@ -44,13 +52,24 @@
                 value: "",
                 required: false
             },
-            device_id: {
+            uid: {
+                required: true,
+                validate:function(v) {
+                    return typeof(v)=="object" && v.length;
+                }
+            },
+            cid: {
                 value: null,
+                required: false
+            },
+            showHidden: {
+                value: false,
                 required: true
             },
-            state: {
-                value: ""
-            },
+            enableMultiple: {
+                value: false,
+                required: true
+            }
         },
         inputs: 1,
         outputs: 1,
@@ -64,8 +83,8 @@
                 label = this.name;
             } else if (typeof(this.friendly_name) == 'string' && this.friendly_name.length) {
                 label = this.friendly_name;
-            } else if (typeof(this.device_id) == 'string') {
-                label = this.device_id;
+            } else if (typeof(this.uid) == 'string') {
+                label = this.uid;
             }
 
             return label;
@@ -76,47 +95,11 @@
         oneditprepare: function () {
             var node = this;
 
-            var updateOutput = function () {
-                var selectedState = $('#node-input-state option:selected').val();
-                var selectedDevice = $('#node-input-device_id option:selected').val();
-
-                // if ( (selectedState != 0 && selectedState != null && selectedDevice.match(/^\d/)) || (node.state != 0 && node.state != null)) {
-                //     $outputSelect.closest('.form-row').show();
-                // } else {
-                //     $outputSelect.closest('.form-row').hide();
-                // }
-                // $outputSelect.multipleSelect('refresh');
-            }
-
-            $('#node-input-state').on("change", function() {
-                var state = $('#node-input-state option:selected').val();
-                if (state) { node.state = state; }
-                // if (parseInt(state) === 0) {$outputSelect.val('always').multipleSelect('refresh');}
-                updateOutput();
-            });
-
-
-            setTimeout(function(){
-                spruthub_getItemList(node.device_id, '#node-input-device_id', {allowEmpty:false});
-
-                var $deviceInput = $('#node-input-device_id');
-                $deviceInput.on("change", function(){
-                    spruthub_getItemStateList(0, '#node-input-state');
-                    // var device = $('#node-input-device_id option:selected').val();
-                    updateOutput();
-                    $('#node-input-friendly_name').val($('#node-input-device_id option:selected').attr('data-friendly_name'));
-                });
-
-                setTimeout(function () {
-                    spruthub_getItemStateList(node.state, '#node-input-state');
-                },100);
-
-                // if (!node.output) { $outputSelect.val('always').multipleSelect('refresh'); }
-
-            }, 100); //we need small timeout, too fire change event for server select
+            setTimeout(function () {
+                spruthub_devicesSelect(node.uid, {cid:node.cid});
+            },100);
         },
         oneditsave: function () {
-
         }
     });
 </script>

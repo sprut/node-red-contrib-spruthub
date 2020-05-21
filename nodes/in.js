@@ -14,6 +14,7 @@ module.exports = function(RED) {
             node.cleanTimer = null;
             node.server = RED.nodes.getNode(node.config.server);
             node.serviceType = undefined;
+            node.config.cid = node.config.cid==='0'?'':node.config.cid;
 
             node.status({}); //clean
 
@@ -52,105 +53,13 @@ module.exports = function(RED) {
             }
         }
 
-        onConnectError(status = null) {
-            var node = this;
-            // node.status({
-            //     fill: "red",
-            //     shape: "dot",
-            //     text: "node-red-contrib-spruthub/server:status.no_connection"
-            // });
-        }
-
-        onMQTTClose() {
-            var node = this;
-
-            //remove listeners
-            if (node.listener_onMQTTConnect) {
-                node.server.removeListener('onMQTTConnect', node.listener_onMQTTConnect);
-            }
-            if (node.listener_onConnectError) {
-                node.server.removeListener('onConnectError', node.listener_onConnectError);
-            }
-            if (node.listener_onMQTTMessage) {
-                node.server.removeListener("onMQTTMessage", node.listener_onMQTTMessage);
-            }
-            if (node.listener_onMQTTBridgeState) {
-                node.server.removeListener("onMQTTBridgeState", node.listener_onMQTTBridgeState);
-            }
-
-            node.onConnectError();
-        }
-
         getServiceType(uid) {
             var node = this;
-            if (node.serviceType !== undefined) return node.serviceType;
-
-
-            var uidRaw = uid.split('_');
-            var aid = uidRaw[0];
-            var sid = uidRaw[1];
-            var cid = node.config.cid!='0'?node.config.cid:false;
-
-
-            var res = {};
-            loop1:
-            for (var i in node.server.accessories.accessories) {
-                if (node.server.accessories.accessories[i]['aid'] == aid) {
-                    loop2:
-                    for (var i2 in node.server.accessories.accessories[i]['services']) {
-                        if (node.server.accessories.accessories[i]['services'][i2]['iid'] == sid) {
-                            if (cid) {
-                                for (var i3 in node.server.accessories.accessories[i]['services'][i2]['characteristics']) {
-                                    if (node.server.accessories.accessories[i]['services'][i2]['characteristics'][i3]['type'] == cid) {
-                                        res['service'] = node.server.accessories.accessories[i]['services'][i2];
-                                        res['characteristic'] = node.server.accessories.accessories[i]['services'][i2]['characteristics'][i3];
-                                        break loop1;
-                                    }
-                                }
-                            } else {
-                                res['service'] = node.server.accessories.accessories[i]['services'][i2];
-                                break loop1;
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (!cid) {
-                node.serviceType = res;
+            if (node.serviceType !== undefined) {
                 return node.serviceType;
+            } else {
+                return node.server.getServiceType(uid, node.config.cid);
             }
-
-
-
-            var serviceType = {};
-            loop1:
-            for (var i in node.server.service_types) {
-                if (res['service'] == node.server.service_types[i]['name']) {
-                    loop2:
-                    for (var i2 in node.server.service_types[i]['required']) {
-                        if (node.server.service_types[i]['required'][i2]['name'] == res['characteristic']) {
-                            serviceType = node.server.service_types[i]['required'][i2];
-                            break loop1;
-                        }
-                        if (node.server.service_types[i]['optional'][i2]['name'] == res['characteristic']) {
-                            serviceType = node.server.service_types[i]['optional'][i2];
-                            break loop1;
-                        }
-                    }
-
-                }
-            }
-            serviceType['service'] = res['service'];
-            serviceType['characteristic'] = res['characteristic'];
-            node.serviceType = serviceType;
-
-
-            return node.serviceType;
-        }
-
-        onMQTTConnect() {
-            this.sendStatus();
         }
 
         _sendStatusMultiple() {
@@ -191,17 +100,18 @@ module.exports = function(RED) {
         _sendStatusSingle() {
             var node = this;
             var uid = node.config.uid[0];
-            var cid = node.config.cid!='0'?node.config.cid:false;
+            var cid = node.config.cid?node.config.cid:false;
+
 
             if (uid in node.server.current_values) {
                 var meta = node.getServiceType(uid);
+                if (!meta) return;
 
                 if (cid) { //output specified characteristic
                     if (cid in node.server.current_values[uid]) {
 
                         var payload = node.server.current_values[uid][cid];
-                        payload = SprutHubHelper.isNumber(payload)?parseFloat(payload):payload;
-                        var topic = node.server.getBaseTopic()+'/accessories/'+uid+'/'+meta['service']['type']+'/'+meta['characteristic']['type'];
+                        var topic = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/'+meta['service']['type']+'/'+meta['characteristic']['type'];
 
                         var unit = meta && "characteristic" in meta && "unit" in meta['characteristic']?meta['characteristic']['unit']:'';
                         if (unit) unit = RED._("node-red-contrib-spruthub/server:unit."+unit, ""); //add translation
@@ -240,7 +150,7 @@ module.exports = function(RED) {
 
                 } else { //output all
                     var payload = node.server.current_values[uid];
-                    var topic = node.server.getBaseTopic()+'/accessories/'+uid+'/'+meta['service']['type']+'/#';
+                    var topic = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/'+meta['service']['type']+'/#';
 
                     if (node.firstMsg && !node.config.outputAtStartup) {
                         node.firstMsg = false;
@@ -284,6 +194,10 @@ module.exports = function(RED) {
             }
         }
 
+        onMQTTConnect() {
+            this.sendStatus();
+        }
+
         onMQTTMessage(data) {
             var node = this;
 
@@ -302,6 +216,33 @@ module.exports = function(RED) {
             }
         }
 
+        onMQTTClose() {
+            var node = this;
+
+            if (node.listener_onMQTTConnect) {
+                node.server.removeListener('onMQTTConnect', node.listener_onMQTTConnect);
+            }
+            if (node.listener_onConnectError) {
+                node.server.removeListener('onConnectError', node.listener_onConnectError);
+            }
+            if (node.listener_onMQTTMessage) {
+                node.server.removeListener("onMQTTMessage", node.listener_onMQTTMessage);
+            }
+            if (node.listener_onMQTTBridgeState) {
+                node.server.removeListener("onMQTTBridgeState", node.listener_onMQTTBridgeState);
+            }
+
+            node.onConnectError();
+        }
+
+        onConnectError(status = null) {
+            var node = this;
+            node.status({
+                fill: "red",
+                shape: "dot",
+                text: "node-red-contrib-spruthub/server:status.no_connection"
+            });
+        }
 
     }
     RED.nodes.registerType('spruthub-in', SprutHubNodeIn);

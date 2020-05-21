@@ -14,13 +14,14 @@
     "request": "^2.81.0"
   },
   "deprecated": false,
-  "description": "SprutHub connectivity nodes for node-red",
+  "description": "Sprut.hub connectivity nodes for node-red",
   "homepage": "https://github.com/andreypopov/node-red-contrib-spruthub",
   "keywords": [
     "spruthub",
     "sprut",
     "mqtt",
-    "wirenboard"
+    "wirenboard",
+    "node-red"
   ],
   "license": "GPL-3.0",
   "name": "node-red-contrib-spruthub",
@@ -29,7 +30,6 @@
       "in": "nodes/in.js",
       "get": "nodes/get.js",
       "out": "nodes/out.js",
-      "bridge": "nodes/bridge.js",
       "server": "nodes/server.js",
       "api": "api.js"
     }
@@ -38,5 +38,5 @@
     "type": "git",
     "url": "git+https://github.com/andreypopov/node-red-contrib-spruthub.git"
   },
-  "version": "0.0.1"
+  "version": "0.1.0"
 }
