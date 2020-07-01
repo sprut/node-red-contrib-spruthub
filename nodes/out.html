@@ -20,7 +20,7 @@
     </div>
     <div class="form-row" id="sh_cid_wr" style="display:none;">
         <label for="node-input-cid" class="l-width"><i class="fa fa-tag"></i> <span data-i18n="node-red-contrib-spruthub/server:label.cid"></span></label>
-        <select id="node-input-cid" class="s-width"  data-first="node-red-contrib-spruthub/server:multiselect.required"></select>
+        <select id="node-input-cid" class="s-width"></select>
     </div>
     <div class="form-row">
         <label for='node-input-showHidden' class="l-width"></label>
@@ -71,10 +71,7 @@
             },
             cid: {
                 value: null,
-                required: true,
-                validate:function(v) {
-                    return v && v !== "0";
-                }
+                required: false
             },
             showHidden: {
                 value: false,
@@ -118,7 +115,7 @@
 
 
             $('#node-input-payload').typedInput({
-                types: ['msg', 'str', 'num', 'bool', 'flow', 'global'],
+                types: ['msg', 'str', 'num', 'bool', 'flow', 'global', 'json'],
                 default: 'msg',
                 value: 'payload',
                 typeField: $('#node-input-payloadType'),

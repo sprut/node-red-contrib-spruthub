@@ -20,12 +20,12 @@ module.exports = function(RED) {
                     shape: "dot",
                     text: "node-red-contrib-spruthub/server:status.no_accessory"
                 });
-            } else if (!node.config.cid || node.config.cid === "0") {
-                node.status({
-                    fill: "red",
-                    shape: "dot",
-                    text: "node-red-contrib-spruthub/server:status.no_characteristic"
-                });
+            // } else if (!node.config.cid || node.config.cid === "0") {
+            //     node.status({
+            //         fill: "red",
+            //         shape: "dot",
+            //         text: "node-red-contrib-spruthub/server:status.no_characteristic"
+            //     });
             } else if (node.server)  {
                 node.on('input', function (message) {
                     node.processInput(message);
@@ -108,41 +108,66 @@ module.exports = function(RED) {
                     text: "node-red-contrib-spruthub/out:status.no_payload"
                 });
                 return false;
-            } else if (typeof(payload) == 'object') {
-                payload = null;
-                node.warn("Invalid payload, can not be an object");
-                node.status({
-                    fill: "red",
-                    shape: "dot",
-                    text: "node-red-contrib-spruthub/server:status.invalid_payload"
-                });
-                return false;
             }
 
-            payload = payload + "";
             for (var i in node.config.uid) {
                 var uid = node.config.uid[i];
-                var meta = node.getServiceType(uid);
-                var topic = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/'+meta['service']['type']+'/'+meta['characteristic']['type']+'/set';
-                node.log('Published to mqtt topic: ' + topic + ' : ' + payload);
-                node.server.mqtt.publish(topic, payload);
+
+
+                var meta = null;
+                var topic = '';
+                if (typeof(payload) == 'object') {
+                    var sentCnt = 0;
+                    for (var cid in payload) {
+                        meta = node.getServiceType(uid, cid);
+                        if (meta['service'] !== undefined && meta['characteristic'] !== undefined) {
+                            topic = node.server.getBaseTopic() + '/accessories/' + uid.split('_').join('/') + '/' + meta['service']['type'] + '/' + meta['characteristic']['type'] + '/set';
+                            node.log('Published to mqtt topic: ' + topic + ' : ' + payload[cid] + "");
+                            node.server.mqtt.publish(topic, payload[cid] + "");
+                            sentCnt++;
+                        } else {
+                            node.warn('Check you payload. No such characteristic: '+cid);
+                        }
+                    }
+                    if (!sentCnt) {
+                        node.status({
+                            fill: "red",
+                            shape: "dot",
+                            text: "node-red-contrib-spruthub/server:status.no_characteristic"
+                        });
+                        return false;
+                    }
+                } else {
+                    if (!node.config.cid || node.config.cid === "0") {
+                        node.status({
+                            fill: "red",
+                            shape: "dot",
+                            text: "node-red-contrib-spruthub/server:status.no_characteristic"
+                        });
+                        return false;
+                    }
+                    meta = node.getServiceType(uid, node.config.cid);
+                    topic = node.server.getBaseTopic() + '/accessories/' + uid.split('_').join('/') + '/' + meta['service']['type'] + '/' + meta['characteristic']['type'] + '/set';
+                    node.log('Published to mqtt topic: ' + topic + ' : ' + payload+"");
+                    node.server.mqtt.publish(topic, payload+"");
+                }
             }
 
             node.status({
                 fill: "green",
                 shape: "dot",
-                text: payload
+                text: typeof(payload) == 'object'?"node-red-contrib-spruthub/server:status.sent":payload
             });
         }
 
 
-        getServiceType(uid) {
+        getServiceType(uid, cid) {
             var node = this;
-            if (node.serviceType !== undefined) {
-                return node.serviceType;
-            } else {
-                return node.server.getServiceType(uid, node.config.cid);
-            }
+            // if (node.serviceType !== undefined) {
+            //     return node.serviceType;
+            // } else {
+                return node.server.getServiceType(uid, cid);
+            // }
         }
     }
 
