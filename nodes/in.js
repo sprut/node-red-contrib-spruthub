@@ -105,7 +105,8 @@ module.exports = function(RED) {
 
             if (uid in node.server.current_values) {
                 var meta = node.getServiceType(uid);
-                if (!meta || !"service" in meta || !meta.service || !"characteristic" in meta || !"type" in meta.service) return;
+                if (!meta || !"service" in meta || !"characteristic" in meta
+                    || !meta.service || !"type" in meta.service) return;
 
                 if (cid) { //output specified characteristic
                     if (cid in node.server.current_values[uid]) {
