@@ -107,7 +107,7 @@ module.exports = function (RED) {
             var node = this;
 
             return new Promise(function (resolve, reject) {
-                if (!node.hasOwnProperty("credentials") || !node.credentials.hasOwnProperty("password")) {
+                if (!node.hasOwnProperty("credentials") || !node.credentials.hasOwnProperty("api_password")) {
                     reject({errorMessage: "Empty credentials"});
                 }
                 var authUrl = "http://" + node.config.host + ":" + node.spruthub_port + "/api/server/login/" + encodeURIComponent(node.credentials.api_email);
