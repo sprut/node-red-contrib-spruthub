@@ -41,6 +41,7 @@
         "no_accessory": "no accessory",
         "no_value": "no value",
         "no_device": "no device",
+        "no_server": "no server",
         "no_connection": "no connection",
         "connected": "connected",
         "received": "received",

@@ -3,8 +3,9 @@ var mqtt = require('mqtt');
 var request = require('request');
 
 module.exports = function (RED) {
-    class ServerNode{
-          constructor(n) {
+    class ServerNode {
+
+        constructor(n) {
             RED.nodes.createNode(this, n);
 
             var node = this;
@@ -14,7 +15,7 @@ module.exports = function (RED) {
             node.spruthub_port = 55555;
             node.spruthub_token = null;
             node.mqtt_port = 44444;
-            node.topic = node.config.base_topic+'/#';
+            node.topic = node.config.base_topic + '/#';
             node.accessories = undefined;
             node.service_types = undefined;
             node.items = undefined;
@@ -32,6 +33,7 @@ module.exports = function (RED) {
 
         async init() {
             var node = this;
+
 
             await this.getToken().catch(error => {
                 console.log(error);
@@ -72,9 +74,9 @@ module.exports = function (RED) {
             var node = this;
             var options = {
                 port: node.mqtt_port,
-                username: node.config.mqtt_username||null,
-                password: node.config.mqtt_password||null,
-                clientId:"NodeRed-"+node.id+(clientId?"-"+clientId:""),
+                username: node.config.mqtt_username || null,
+                password: node.config.mqtt_password || null,
+                clientId: "NodeRed-" + node.id + (clientId ? "-" + clientId : ""),
                 connectTimeout: 3000,
                 reconnectPeriod: 3000
             };
@@ -83,12 +85,12 @@ module.exports = function (RED) {
 
         subscribeMQTT() {
             var node = this;
-            node.mqtt.subscribe(node.getBaseTopic()+'/accessories/#', function (err) {
+            node.mqtt.subscribe(node.getBaseTopic() + '/accessories/#', function (err) {
                 if (err) {
-                    node.warn('MQTT Error: Subscribe to "' + node.getBaseTopic()+'/accessories/#');
+                    node.warn('MQTT Error: Subscribe to "' + node.getBaseTopic() + '/accessories/#');
                     node.emit('onConnectError', err);
                 } else {
-                    node.log('MQTT Subscribed to: "' + node.getBaseTopic()+'/accessories/#');
+                    node.log('MQTT Subscribed to: "' + node.getBaseTopic() + '/accessories/#');
                 }
             })
         }
@@ -96,7 +98,8 @@ module.exports = function (RED) {
         unsubscribeMQTT() {
             var node = this;
             node.log('MQTT Unsubscribe from mqtt topic: ' + node.topic);
-            node.mqtt.unsubscribe(node.topic, function (err) {});
+            node.mqtt.unsubscribe(node.topic, function (err) {
+            });
             node.devices_values = [];
         }
 
@@ -104,8 +107,11 @@ module.exports = function (RED) {
             var node = this;
 
             return new Promise(function (resolve, reject) {
-                var authUrl = "http://" + node.config.host + ":" +node.spruthub_port + "/api/server/login/"+encodeURIComponent(node.config.email);
-                var formData = node.config.password;
+                if (!node.hasOwnProperty("credentials") || !node.credentials.hasOwnProperty("password")) {
+                    reject({errorMessage: "Empty credentials"});
+                }
+                var authUrl = "http://" + node.config.host + ":" + node.spruthub_port + "/api/server/login/" + encodeURIComponent(node.credentials.api_email);
+                var formData = node.credentials.api_password;
 
                 request({
                     headers: {
@@ -117,9 +123,14 @@ module.exports = function (RED) {
                     method: 'POST'
                 }, function (err, res, body) {
                     if (err) {
-                        reject({errorMessage:err});
+                        reject({errorMessage: err});
                     } else if (res.statusCode != 200) {
-                        reject({errorMessage:res.statusCode+" "+res.statusMessage+": "+body, statusCode:res.statusCode, statusMessage: res.statusMessage, body:body});
+                        reject({
+                            errorMessage: res.statusCode + " " + res.statusMessage + ": " + body,
+                            statusCode: res.statusCode,
+                            statusMessage: res.statusMessage,
+                            body: body
+                        });
                     } else {
                         if ('set-cookie' in res.headers) {
                             var rawCookie = res.headers['set-cookie'];
@@ -129,10 +140,10 @@ module.exports = function (RED) {
                                 node.connection = true;
                                 resolve(node.spruthub_token);
                             } else {
-                                reject({errorMessage:"Sprut.hub: Token not found"});
+                                reject({errorMessage: "Sprut.hub: Token not found"});
                             }
                         } else {
-                            reject({errorMessage:"Cookie was not set"});
+                            reject({errorMessage: "Cookie was not set"});
                         }
                     }
                 });
@@ -142,7 +153,7 @@ module.exports = function (RED) {
         async getAccessories(force = false) {
             var node = this;
 
-            var data = await node.getApiCall('/api/homekit/json').catch(error=>{
+            var data = await node.getApiCall('/api/homekit/json').catch(error => {
                 node.warn(error);
                 return (error);
             });
@@ -156,7 +167,7 @@ module.exports = function (RED) {
         async getServiceTypes() {
             var node = this;
 
-            var data = await node.getApiCall('/api/types/service').catch(error=>{
+            var data = await node.getApiCall('/api/types/service').catch(error => {
                 node.warn(error);
                 return (error);
             });
@@ -170,20 +181,20 @@ module.exports = function (RED) {
             return new Promise(function (resolve, reject) {
 
                 if (!node.spruthub_token) {
-                    reject({errorMessage:"Sprut.hub: Token was not fetch"});
+                    reject({errorMessage: "Sprut.hub: Token was not fetch"});
                 }
 
-                var url = "http://" + node.config.host + ":" +node.spruthub_port + path;
+                var url = "http://" + node.config.host + ":" + node.spruthub_port + path;
 
                 request({
                     headers: {
-                        'Cookie': 'token='+node.spruthub_token
+                        'Cookie': 'token=' + node.spruthub_token
                     },
                     uri: url,
                     method: 'GET'
                 }, function (err, res, body) {
                     if (err) {
-                        reject({errorMessage:err});
+                        reject({errorMessage: err});
                     } else if (res.statusCode != 200) {
                         reject({
                             errorMessage: res.statusCode + " " + res.statusMessage + ": " + body,
@@ -208,7 +219,7 @@ module.exports = function (RED) {
                     client.subscribe(node.getBaseTopic() + "/revision", function (err) {
                         if (err) {
                             client.end(true);
-                            reject({"errorMessage":err});
+                            reject({"errorMessage": err});
                         } else {
                             //end function after timeout, if now response
                             timeout = setTimeout(function () {
@@ -222,12 +233,12 @@ module.exports = function (RED) {
                     if (node.getBaseTopic() + "/revision" == topic) {
                         clearTimeout(timeout);
                         client.end(true);
-                        resolve({"revision":message.toString()});
+                        resolve({"revision": message.toString()});
                     }
                 });
                 client.on('error', function (error) {
                     client.end(true);
-                    reject({"errorMessage":error});
+                    reject({"errorMessage": error});
                 });
             });
         }
@@ -236,41 +247,41 @@ module.exports = function (RED) {
         async checkConnection(config) {
             var node = this;
             node.config.host = config.host;
-            node.config.email = config.email;
-            node.config.password = config.password;
+            node.config.email = node.credentials.api_email;
+            node.config.password = node.credentials.api_password;
             // node.config.mqtt_username = config.mqtt_username;
             // node.config.mqtt_password = config.mqtt_password;
 
             var result = {
-                "auth":false,
-                "accessories_cnt":false,
-                "version":false,
-                "mqtt":false
+                "auth": false,
+                "accessories_cnt": false,
+                "version": false,
+                "mqtt": false
 
             };
 
-            var token = await node.getToken().catch(error=>{
+            var token = await node.getToken().catch(error => {
                 node.warn(error);
             });
             if (token) {
                 result['auth'] = true;
             }
 
-            var accessories = await node.getAccessories().catch(error=>{
+            var accessories = await node.getAccessories().catch(error => {
                 node.warn(error);
             });
             if (accessories) {
                 result['accessories_cnt'] = Object.keys(accessories.accessories).length;
             }
 
-            var version = await node.getApiCall('/api/server/version').catch(error=>{
+            var version = await node.getApiCall('/api/server/version').catch(error => {
                 node.warn(error);
             });
             if (version) {
                 result['version'] = version;
             }
 
-            var mqtt = await node.testMqtt().catch(error=>{
+            var mqtt = await node.testMqtt().catch(error => {
                 node.warn(error);
             });
             if (mqtt) {
@@ -292,12 +303,12 @@ module.exports = function (RED) {
             for (var i in data.accessories) {
                 for (var i2 in data.accessories[i]['services']) {
                     for (var i3 in data.accessories[i]['services'][i2]['characteristics']) {
-                        key = data.accessories[i]['aid']+'_'+data.accessories[i]['services'][i2]['iid'];
+                        key = data.accessories[i]['aid'] + '_' + data.accessories[i]['services'][i2]['iid'];
                         characteristic = data.accessories[i]['services'][i2]['characteristics'][i3]['type'];
                         val = data.accessories[i]['services'][i2]['characteristics'][i3]['value'];
 
                         if (!(key in values)) values[key] = {};
-                        values[key][characteristic]  = val;
+                        values[key][characteristic] = val;
                     }
                 }
             }
@@ -313,7 +324,7 @@ module.exports = function (RED) {
             var uidRaw = uid.split('_');
             var aid = uidRaw[0];
             var sid = uidRaw[1];
-            cid = cid!='0'?cid:false;
+            cid = cid != '0' ? cid : false;
 
             var res = {};
             loop1:
@@ -342,7 +353,6 @@ module.exports = function (RED) {
             if (!cid) {
                 return res;
             }
-
 
 
             var serviceType = {};
@@ -438,7 +448,7 @@ module.exports = function (RED) {
 
                 var parts = topic.split('/')
                 if (parts[2] == 'accessories') {
-                    var uid = parts[3]+'_'+parts[4];
+                    var uid = parts[3] + '_' + parts[4];
                     if (!(uid in node.current_values)) node.current_values[uid] = {};
 
                     var value = SprutHubHelper.convertVarType(messageString);
@@ -462,6 +472,11 @@ module.exports = function (RED) {
         }
     }
 
-    RED.nodes.registerType('spruthub-server', ServerNode, {});
+    RED.nodes.registerType('spruthub-server', ServerNode, {
+        credentials: {
+            api_email: {type: "text"},
+            api_password: {type: "text"}
+        }
+    });
 };
 

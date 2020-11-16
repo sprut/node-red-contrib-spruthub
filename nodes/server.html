@@ -13,13 +13,18 @@
         <label for="node-config-input-host" class="l-width"><i class="fa fa-location-arrow"></i> <span data-i18n="label.host"></span></label>
         <input type="text" id="node-config-input-host">
     </div>
-    <div class="form-row">
-        <label for="node-config-input-email" class="l-width"><i class="fa fa-envelope-o"></i> <span data-i18n="label.email"></span></label>
-        <input type="text" id="node-config-input-email">
+
+     <div class="form-row">
+        <label for="node-config-input-api_email" class="l-width"><i class="fa fa-envelope-o"></i> <span data-i18n="label.email"></span></label>
+        <input type="text" id="node-config-input-api_email">
+        <input type="hidden" id="node-config-input-email" value="">
     </div>
+
+
     <div class="form-row">
-        <label for="node-config-input-password" class="l-width"><i class="fa fa-lock"></i> <span data-i18n="label.password"></span></label>
-        <input type="password" id="node-config-input-password" autocomplete="new-password">
+        <label for="node-config-input-api_password" class="l-width"><i class="fa fa-lock"></i> <span data-i18n="label.password"></span></label>
+        <input type="password" id="node-config-input-api_password">
+        <input type="hidden" id="node-config-input-password" value="">
     </div>
 <!--    <hr>-->
 <!--    <h3>MQTT</h3>-->
@@ -84,13 +89,13 @@
                 value: null,
                 required: true
             },
-            email: {
-                value: null,
-                required: true
+            email: { //moved to credentials
+                value: "",
+                required: false
             },
-            password: {
-                value: null,
-                required: true
+            password: { //moved to credentials
+                value: "",
+                required: false
             }//,
             // token: {
             //     value: null,
@@ -109,13 +114,22 @@
             //     required: false
             // }
         },
+        credentials: {
+            api_email: {type:"text", required:true},
+            api_password: {type:"text", required:true}
+        },
         label: function() {
-            return this.name ||  this.host;
+            return this.name || this.host;
         },
         oneditprepare: function () {
             var node = this;
             var $testBtn = $('#test-connection');
             var spinner = '<i class="fa fa-spin fa-spinner"></i></span>';
+
+
+            //empty old config settings
+            $('#node-config-input-email').val('');
+            $('#node-config-input-password').val('');
 
             $testBtn.off('click').on('click', function(){
                 $('#sh_auth').html(spinner);
@@ -126,8 +140,8 @@
                 $.getJSON('spruthub/checkConnection', {
                     controllerID: node.id,
                     host:$('#node-config-input-host').val(),
-                    email:$('#node-config-input-email').val(),
-                    password:$('#node-config-input-password').val(),
+                    email:$('#node-config-input-api_email').val(),
+                    password:$('#node-config-input-api_password').val(),
                     // mqtt_username:$('#node-config-input-mqtt_username').val(),
                     // mqtt_password:$('#node-config-input-mqtt_password').val()
                 }).done(function (data, textStatus, jqXHR) {
