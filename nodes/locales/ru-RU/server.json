@@ -1,0 +1,81 @@
+{
+    "label": {
+        "name": "Название",
+        "host": "Хост",
+        "email": "Email",
+        "password": "Пароль",
+        "test_connection": "Тест подключения",
+        "token": "Токен",
+        "mqtt_username": "Имя пользователя",
+        "mqtt_password": "Пароль",
+        "mqtt_port": "Порь",
+        "check": "Проверить",
+        "sh_mqtt": "MQTT статус",
+        "sh_api": "REST API статус",
+        "sh_version": "Sprut.hub версия",
+        "sh_accessories_cnt": "Аксессуары",
+        "sh_auth": "Автоизация",
+        "error": "Ошибка",
+        "ok": "ОК",
+        "server": "Sprut.hub",
+        "uid": "Аксессуар",
+        "cid": "Характеристика",
+        "show_hidden": "Показать скрытые аксессуары",
+        "enable_multiple": "Включить множественный выбор",
+        "refresh": "Обновить",
+        "refresh_list": "Обновить список",
+        "start_output": "Начать вывод",
+        "start_output_help": "Отправить данные при рестарте",
+        "accessories": "аксессуары",
+        "accessory": "аксессуар",
+        "command": "Команда",
+        "payload": "Payload"
+    },
+    "placeholder": {
+        "name": "Название"
+    },
+    "status": {
+        "no_payload": "нет payload",
+        "invalid_payload": "невалидный payload",
+        "no_characteristic": "нет характеристики",
+        "no_accessory": "нет аксессуара",
+        "no_value": "нет значения",
+        "no_device": "нет устройста",
+        "no_server": "нет хаба",
+        "no_connection": "нет связи",
+        "connected": "подключено",
+        "received": "получено",
+        "sent": "отправлно"
+    },
+    "tip": {
+        "deploy": "<b>Важно:</b> после изменения настроек, надо сделать развертывание (Deploy)"
+    },
+
+    "unit": {
+        "percentage": "%",
+        "celsius": "°C",
+        "lux": "люкс",
+        "arcdegrees": "°",
+        "seconds": "сек",
+        "hPa": "гПа",
+        "mmHg": "mmHg",
+        "dB": "дБ",
+        "V": "V",
+        "A": "A",
+        "W": "Вт",
+        "VA": "VA",
+        "kWh": "кВт",
+        "kVAh": "kVAh",
+        "UVI": "UVI"
+    },
+
+    "multiselect": {
+        "complete_payload": "Полный вывод",
+        "all": "Все",
+        "devices": "Аксессуары",
+        "filter_devices": "Фильтровать аксессуары...",
+        "refresh": "Обновить список",
+        "none_selected": "Ничего не выбрано",
+        "required": ""
+    }
+}

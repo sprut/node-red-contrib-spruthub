@@ -40,19 +40,28 @@ module.exports = function(RED) {
             var node = this;
             var uidArr = node.config.uid;
 
-            var payload  = [];
+            var payload  = {};
+            var math = [];
             for (var i in uidArr) {
                 var uid = uidArr[i];
 
                 if (uid in node.server.current_values) {
-                    payload.push(node.server.current_values[uid]);
+                    var meta = node.getServiceType(uid);
+                    payload[uid] = {};
+                    payload[uid]['payload'] = node.server.current_values[uid];
+                    payload[uid]['topic'] = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/'+meta['service']['type']+'/#';
+                    payload[uid]['elementId'] = SprutHubHelper.generateElementId(payload[uid]['topic']);
+                    payload[uid]['meta'] = meta;
+
+                    math.push(payload[uid]['payload']);
                 }
             }
 
             node.send({
                 payload: payload,
-                payload_in: node.message_in,
-                math:SprutHubHelper.formatMath(payload)
+                payload_in: node.message_in.payload,
+                message_in: node.message_in,
+                math:SprutHubHelper.formatMath(math)
             });
 
             node.status({
@@ -107,8 +116,10 @@ module.exports = function(RED) {
 
                 node.send({
                     topic: topic,
+                    elementId: SprutHubHelper.generateElementId(topic),
                     payload: payload,
-                    payload_in: node.message_in,
+                    message_in: node.message_in,
+                    payload_in: node.message_in.payload,
                     meta: meta
                 });
 
