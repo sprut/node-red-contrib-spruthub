@@ -277,8 +277,9 @@ module.exports = function (RED) {
             var version = await node.getApiCall('/api/server/version').catch(error => {
                 node.warn(error);
             });
-            if (version) {
-                result['version'] = version;
+            if (SprutHubHelper.isJson(version)) {
+                var versionInfo = JSON.parse(version);
+                result['version'] = versionInfo.version + " ("+versionInfo.revision+")";
             }
 
             var mqtt = await node.testMqtt().catch(error => {
