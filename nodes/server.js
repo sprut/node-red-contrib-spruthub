@@ -77,20 +77,22 @@ module.exports = function (RED) {
                 username: node.config.mqtt_username || null,
                 password: node.config.mqtt_password || null,
                 clientId: "NodeRed-" + node.id + (clientId ? "-" + clientId : ""),
-                connectTimeout: 3000,
-                reconnectPeriod: 3000
+                connectTimeout: 5000,
+                reconnectPeriod: 5000
             };
             return mqtt.connect('mqtt://' + node.config.host, options);
         }
 
         subscribeMQTT() {
             var node = this;
-            node.mqtt.subscribe(node.getBaseTopic() + '/accessories/#', function (err) {
+            node.mqtt.subscribe(node.getBaseTopic()+'/#', function (err) {
                 if (err) {
-                    node.warn('MQTT Error: Subscribe to "' + node.getBaseTopic() + '/accessories/#');
+                    node.warn('MQTT Error: Subscribe to "' + node.getBaseTopic()+'/#' + '"');
                     node.emit('onConnectError', err);
                 } else {
-                    node.log('MQTT Subscribed to: "' + node.getBaseTopic() + '/accessories/#');
+                    node.log('MQTT Connected');
+                    node.log('MQTT Subscribed to: "' + node.getBaseTopic()+'/#' + '"');
+                    node.emit('onMQTTConnect');
                 }
             })
         }
@@ -385,9 +387,6 @@ module.exports = function (RED) {
             var node = this;
 
             node.subscribeMQTT();
-
-            node.log('MQTT Connected');
-            node.emit('onMQTTConnect');
         }
 
         onMQTTDisconnect(error) {
@@ -441,25 +440,34 @@ module.exports = function (RED) {
 
         onMQTTMessage(topic, message) {
             var node = this;
-
             var messageString = message.toString();
+            var parts = topic.split('/')
 
-            //isSet
-            if (topic.substring(topic.length - 4, topic.length) != '/set') {
+            //set command, ignore
+            if (topic.substring(topic.length - 4, topic.length) === '/set') {
+                return false;
+            }
 
-                var parts = topic.split('/')
-                if (parts[2] == 'accessories') {
-                    var uid = parts[3] + '_' + parts[4];
-                    if (!(uid in node.current_values)) node.current_values[uid] = {};
+            //restarting SH service
+            if (parts.length === 2 && messageString === 'Server Starting') {
+                node.log('Spruthub is loading');
+                node.current_values = {}; //remove all current values
+                node.emit('onSpruthubRestart', {});
+            }
 
-                    var value = SprutHubHelper.convertVarType(messageString);
-                    node.current_values[uid][parts[6]] = value;
+            //value was changed
+            if (parts.length > 2 && parts[2] == 'accessories') {
+                var uid = parts[3] + '_' + parts[4];
+                if (!(uid in node.current_values)) node.current_values[uid] = {};
 
-                    node.emit('onMQTTMessage', {
-                        uid: uid
-                    });
-                }
+                var value = SprutHubHelper.convertVarType(messageString);
+                node.current_values[uid][parts[6]] = value;
 
+                node.emit('onMQTTMessage', {
+                    topic: topic,
+                    uid: uid,
+                    cid: parts[6]
+                });
             }
         }
 

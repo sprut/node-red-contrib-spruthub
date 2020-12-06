@@ -25,7 +25,7 @@
         "refresh": "Refresh",
         "refresh_list": "Refresh List",
         "start_output": "Start Output",
-        "start_output_help": "Send value on start",
+        "start_output_help": "Send value on reconnect",
         "accessories": "accessories",
         "accessory": "accessory",
         "command": "Command",

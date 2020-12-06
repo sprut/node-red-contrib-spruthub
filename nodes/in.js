@@ -36,8 +36,8 @@ module.exports = function(RED) {
                 node.listener_onMQTTMessage = function(data) { node.onMQTTMessage(data); }
                 node.server.on('onMQTTMessage', node.listener_onMQTTMessage);
 
-                node.listener_onMQTTBridgeState = function(data) { node.onMQTTBridgeState(data); }
-                node.server.on('onMQTTBridgeState', node.listener_onMQTTBridgeState);
+                node.listener_onSpruthubRestart = function(data) { node.onSpruthubRestart(); }
+                node.server.on('onSpruthubRestart', node.listener_onSpruthubRestart);
 
                 node.on('close', () => this.onMQTTClose());
 
@@ -105,7 +105,7 @@ module.exports = function(RED) {
             }, 3000);
         }
 
-        _sendStatusSingle() {
+        _sendStatusSingle(topic = null) {
             var node = this;
             var uid = node.config.uid[0];
             var cid = node.config.cid?node.config.cid:false;
@@ -120,7 +120,7 @@ module.exports = function(RED) {
                     if (cid in node.server.current_values[uid]) {
 
                         var payload = node.server.current_values[uid][cid];
-                        var topic = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/'+meta['service']['type']+'/'+meta['characteristic']['type'];
+                        if (!topic) topic = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/'+meta['service']['type']+'/'+meta['characteristic']['type'];
 
                         var unit = meta && "characteristic" in meta && "unit" in meta['characteristic']?meta['characteristic']['unit']:'';
                         if (unit) unit = RED._("node-red-contrib-spruthub/server:unit."+unit, ""); //add translation
@@ -160,7 +160,7 @@ module.exports = function(RED) {
 
                 } else { //output all
                     var payload = node.server.current_values[uid];
-                    var topic = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/'+meta['service']['type']+'/#';
+                    if (!topic) topic = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/'+meta['service']['type']+'/#';
 
                     if (node.firstMsg && !node.config.outputAtStartup) {
                         node.firstMsg = false;
@@ -195,36 +195,37 @@ module.exports = function(RED) {
             }
         }
 
-        sendStatus() {
+        sendStatus(topic = null) {
             if (!this.config.uid) return;
 
             if (this.config.enableMultiple) {
                 this._sendStatusMultiple();
             } else {
-                this._sendStatusSingle();
+                this._sendStatusSingle(topic);
             }
         }
 
         onMQTTConnect() {
+            this.firstMsg = true;
             this.sendStatus();
         }
 
         onMQTTMessage(data) {
             var node = this;
 
-            if (node.config.uid && (node.config.uid).includes(data.uid)) {
-                node.sendStatus();
+            if (node.config.uid && (node.config.uid).includes(data.uid)
+            && (!node.config.cid || (node.config.cid && node.config.cid == data.cid))) {
+
+                // if (node.config.uid == '145_10') {
+                //     console.log('====>'+node.config.cid + ' == '+ data.cid);
+                // }
+
+                node.sendStatus(data.topic);
             }
         }
 
-        onMQTTBridgeState(data) {
-            var node = this;
-
-            if (data.payload) {
-                node.status({});
-            } else {
-                this.onConnectError();
-            }
+        onSpruthubRestart() {
+            this.firstMsg = true;
         }
 
         onMQTTClose() {
@@ -239,8 +240,8 @@ module.exports = function(RED) {
             if (node.listener_onMQTTMessage) {
                 node.server.removeListener("onMQTTMessage", node.listener_onMQTTMessage);
             }
-            if (node.listener_onMQTTBridgeState) {
-                node.server.removeListener("onMQTTBridgeState", node.listener_onMQTTBridgeState);
+            if (node.listener_onSpruthubRestart) {
+                node.server.removeListener("onSpruthubRestart", node.listener_onSpruthubRestart);
             }
 
             node.onConnectError();
@@ -253,6 +254,8 @@ module.exports = function(RED) {
                 shape: "dot",
                 text: "node-red-contrib-spruthub/server:status.no_connection"
             });
+
+            this.firstMsg = true;
         }
 
     }

@@ -25,7 +25,7 @@
         "refresh": "Обновить",
         "refresh_list": "Обновить список",
         "start_output": "Начать вывод",
-        "start_output_help": "Отправить данные при рестарте",
+        "start_output_help": "Отправить данные при реконнекте",
         "accessories": "аксессуары",
         "accessory": "аксессуар",
         "command": "Команда",

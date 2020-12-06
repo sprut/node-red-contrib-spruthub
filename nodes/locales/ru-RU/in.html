@@ -3,22 +3,22 @@
 
     <h3>Конфигурация</h3>
     <dl class="message-properties">
-        <dt class="optional">Name <span class="property-type">string</span></dt><dd>Choose any name to identify your node</dd>
-        <dt>Sprut.hub <span class="property-type">object</span></dt><dd>Choose instance to use</dd>
-        <dt>Accessory <span class="property-type">string</span></dt><dd>Select accessories to listen to</dd>
-        <dt class="optional">Show hidden accessories <span class="property-type">boolean</span></dt><dd></dd>
-        <dt class="optional">Enable multiple select <span class="property-type">boolean</span></dt><dd></dd>
-        <dt class="optional">Start output <span class="property-type">boolean</span></dt><dd>Output state at startup.<br>
-            <b><i>notice:</i></b> does not output on "Deploy only modified nodes" while there are no changes in current node</dd>
+        <dt class="optional">Название <span class="property-type">string</span></dt><dd>Произвольное название</dd>
+        <dt>Sprut.hub <span class="property-type">object</span></dt><dd>Сервер с СХ</dd>
+        <dt>Аксессуар <span class="property-type">string</span></dt><dd>Выбрать аксессуары</dd>
+        <dt class="optional">Показать скрытые <span class="property-type">boolean</span></dt><dd></dd>
+        <dt class="optional">Включить мультивыбор <span class="property-type">boolean</span></dt><dd></dd>
+        <dt class="optional">Начать вывод <span class="property-type">boolean</span></dt><dd>Отправить данные при реконнекте к СХ.<br>
+            <b><i>заметка:</i></b> не посылает данные при "Развернуть измененные узлы", если в настройках ноды не было изменений</dd>
     </dl>
 
     <h3>Выводы</h3>
     <h5>Вывод</h5>
     <dl class="message-properties">
         <dt>payload <span class="property-type">string|object</span></dt><dd></dd>
-        <dt>topic<span class="property-type">string</span></dt><dd>mqtt topic</dd>
-        <dt>meta<span class="property-type">object</span></dt><dd>service and characteristic info</dd>
-        <dt>math<span class="property-type">object</span></dt><dd>math result for multiple selected accessories</dd>
+        <dt>topic<span class="property-type">string</span></dt><dd>mqtt топик</dd>
+        <dt>meta<span class="property-type">object</span></dt><dd>описание сериса и характеристики</dd>
+        <dt>math<span class="property-type">object</span></dt><dd>математические выражения: сумма, колчество, средее, мин, макс</dd>
     </dl>
 </script>
 
