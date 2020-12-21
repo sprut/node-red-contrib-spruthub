@@ -330,26 +330,38 @@ module.exports = function (RED) {
             cid = cid != '0' ? cid : false;
 
             var res = {};
+            res['accessory'] = {};
             loop1:
                 for (var i in node.accessories.accessories) {
                     if (node.accessories.accessories[i]['aid'] == aid) {
                         loop2:
-                            for (var i2 in node.accessories.accessories[i]['services']) {
-                                if (node.accessories.accessories[i]['services'][i2]['iid'] == sid) {
-                                    if (cid) {
-                                        for (var i3 in node.accessories.accessories[i]['services'][i2]['characteristics']) {
-                                            if (node.accessories.accessories[i]['services'][i2]['characteristics'][i3]['type'] == cid) {
-                                                res['service'] = node.accessories.accessories[i]['services'][i2];
-                                                res['characteristic'] = node.accessories.accessories[i]['services'][i2]['characteristics'][i3];
-                                                break loop1;
-                                            }
+                        for (var i2 in node.accessories.accessories[i]['services']) {
+                            if (node.accessories.accessories[i]['services'][i2]['iid'] == sid) {
+                                res['service'] = node.accessories.accessories[i]['services'][i2];
+                                if (cid) {
+                                    for (var i3 in node.accessories.accessories[i]['services'][i2]['characteristics']) {
+                                        // res['accessory'][node.accessories.accessories[i]['services'][i2]['characteristics'][i3]['type']] = node.accessories.accessories[i]['services'][i2]['characteristics'][i3];
+                                        if (node.accessories.accessories[i]['services'][i2]['characteristics'][i3]['type'] == cid) {
+                                            res['characteristic'] = node.accessories.accessories[i]['services'][i2]['characteristics'][i3];
                                         }
-                                    } else {
-                                        res['service'] = node.accessories.accessories[i]['services'][i2];
-                                        break loop1;
                                     }
+                                } else {
+                                    break loop1;
                                 }
                             }
+
+                            for (var i4 in node.accessories.accessories[i]['services']) {
+                                var i4_type = node.accessories.accessories[i]['services'][i4]['type'];
+                                if (!(i4_type in res['accessory']))  res['accessory'][i4_type] = {};
+
+                                for (var i5 in node.accessories.accessories[i]['services'][i4]['characteristics']) {
+                                    var i5_type = node.accessories.accessories[i]['services'][i4]['characteristics'][i5]['type'];
+                                    if (!(i5_type in res['accessory'][i4_type]))  res['accessory'][i4_type][i5_type] = {};
+
+                                    res['accessory'][i4_type][i5_type] = node.accessories.accessories[i]['services'][i4]['characteristics'][i5];//node.accessories.accessories[i]['services'][i4]['characteristics'];
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -377,7 +389,9 @@ module.exports = function (RED) {
                     }
                 }
             serviceType['service'] = res['service'];
+            serviceType['accessory'] = res['accessory'];
             serviceType['characteristic'] = res['characteristic'];
+
 
             return serviceType;
         }
