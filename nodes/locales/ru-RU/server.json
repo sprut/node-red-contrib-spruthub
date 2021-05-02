@@ -29,7 +29,9 @@
         "accessories": "аксессуары",
         "accessory": "аксессуар",
         "command": "Команда",
-        "payload": "Payload"
+        "payload": "Payload",
+        "rbe": "RBE",
+        "rbe_help": "Слать только изменения"
     },
     "placeholder": {
         "name": "Название"
@@ -45,7 +47,8 @@
         "no_connection": "нет связи",
         "connected": "подключено",
         "received": "получено",
-        "sent": "отправлно"
+        "sent": "отправлно",
+        "rbe": "без изменений"
     },
     "tip": {
         "deploy": "<b>Важно:</b> после изменения настроек, надо сделать развертывание (Deploy)"

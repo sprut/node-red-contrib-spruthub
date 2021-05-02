@@ -34,16 +34,15 @@
         <label for="force-refresh" class="l-width"><i class="fa fa-refresh"></i> <span data-i18n="node-red-contrib-spruthub/server:label.refresh"></span></label>
         <a class="red-ui-button s-width" id="force-refresh" name="force-refresh"><span data-i18n="node-red-contrib-spruthub/server:label.refresh_list"></span></a>
     </div>
-
-
 	<div class="form-row">
         <label for="node-input-payload" class="l-width"><i class="fa fa-envelope"></i> <span data-i18n="node-red-contrib-spruthub/server:label.payload"></span></label>
         <input type="text" id="node-input-payload" style="width:70%">
         <input type="hidden" id="node-input-payloadType">
     </div>
-
-
-
+<!--    <div class="form-row">-->
+<!--        <label for='node-input-rbe' class="l-width"><i class="fa fa-refresh"></i> <span data-i18n="node-red-contrib-spruthub/server:label.rbe"></span></label>-->
+<!--        <input type="checkbox" id="node-input-rbe"  style="display: inline-block; width: auto; vertical-align: top;"> <span data-i18n="node-red-contrib-spruthub/server:label.rbe_help"></span></input>-->
+<!--    </div>-->
 </script>
 
 <script type='text/javascript'>
@@ -86,7 +85,11 @@
             },
             payloadType: {
                 value: 'msg',
-            }
+            }//,
+            // rbe: {
+            //     value: false,
+            //     required: false
+            // }
         },
         inputLabels: "payload",
         paletteLabel: 'out',
@@ -112,10 +115,18 @@
         oneditprepare: function() {
             var node = this;
 
-
+          //init typedInput
+          var payloadTypes = {
+            value: 'sh_payload',
+            label: 'SprutHub',
+            icon: 'icons/node-red-contrib-spruthub/logo_black.png',
+            options: [
+              {'value':'toggle', 'label':'Toggle'}
+            ]
+          };
 
             $('#node-input-payload').typedInput({
-                types: ['msg', 'str', 'num', 'bool', 'flow', 'global', 'json'],
+                types: ['msg', 'str', 'num', 'bool', 'flow', 'global', 'json', payloadTypes],
                 default: 'msg',
                 value: 'payload',
                 typeField: $('#node-input-payloadType'),

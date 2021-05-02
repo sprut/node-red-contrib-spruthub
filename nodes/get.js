@@ -48,10 +48,21 @@ module.exports = function(RED) {
                 if (uid in node.server.current_values) {
                     var meta = node.getServiceType(uid);
                     payload[uid] = {};
-                    payload[uid]['payload'] = node.server.current_values[uid];
-                    payload[uid]['topic'] = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/'+meta['service']['type']+'/#';
+                    payload[uid]['topic'] = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/#';
                     payload[uid]['elementId'] = SprutHubHelper.generateElementId(payload[uid]['topic']);
                     payload[uid]['meta'] = meta;
+
+                    //format payload
+                    var p = {};
+                    for (var cid in node.server.current_values[uid]) {
+                        for (var i2 in meta.service.characteristics) {
+                            if (meta.service.characteristics[i2]['iid'] === parseInt(cid)) {
+                                p[meta.service.characteristics[i2]['type']] = node.server.current_values[uid][cid];
+                                break;
+                            }
+                        }
+                    }
+                    payload[uid]['payload'] = p;
 
                     math.push(payload[uid]['payload']);
                 }
@@ -89,7 +100,7 @@ module.exports = function(RED) {
 
                         var payload = node.server.current_values[uid][cid];
                         payload = SprutHubHelper.isNumber(payload)?parseFloat(payload):payload;
-                        var topic = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/'+meta['service']['type']+'/'+meta['characteristic']['type'];
+                        var topic = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/'+cid;
 
                         var unit = meta && "characteristic" in meta && "unit" in meta['characteristic']?meta['characteristic']['unit']:'';
                         if (unit) unit = RED._("node-red-contrib-spruthub/server:unit."+unit, ""); //add translation
@@ -98,14 +109,25 @@ module.exports = function(RED) {
 
                         clearTimeout(node.cleanTimer);
                         node.cleanTimer = setTimeout(function () {
-                            node.status({text: text});
+                            node.status({text: text,fill: "grey",shape: "ring"});
                         }, 3000);
 
                     }
 
                 } else { //output all
-                    var payload = node.server.current_values[uid];
-                    var topic = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/'+meta['service']['type']+'/#';
+                    //format payload
+                    var p = {};
+                    for (var cid in node.server.current_values[uid]) {
+                        for (var i2 in meta.service.characteristics) {
+                            if (meta.service.characteristics[i2]['iid'] === parseInt(cid)) {
+                                p[meta.service.characteristics[i2]['type']] = node.server.current_values[uid][cid];
+                                break;
+                            }
+                        }
+                    }
+                    var payload = p;//node.server.current_values[uid];
+
+                    var topic = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/#';
                     var text =  "node-red-contrib-spruthub/server:status.received";
 
                     clearTimeout(node.cleanTimer);
@@ -128,7 +150,6 @@ module.exports = function(RED) {
                     shape: "dot",
                     text: text
                 });
-
 
             } else {
                 node.status({

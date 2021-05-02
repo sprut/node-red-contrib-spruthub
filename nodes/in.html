@@ -21,6 +21,8 @@
     <div class="form-row" id="sh_cid_wr" style="display:none;">
         <label for="node-input-cid" class="l-width"><i class="fa fa-tag"></i> <span data-i18n="node-red-contrib-spruthub/server:label.cid"></span></label>
         <select id="node-input-cid" class="s-width"  data-i18n="[placeholder]node-red-contrib-spruthub/server:multiselect.complete_payload"></select>
+
+        <input type="text" style="display:none;" id="node-input-ctype">
     </div>
     <div class="form-row">
         <label for='node-input-showHidden' class="l-width"></label>
@@ -73,7 +75,11 @@
                 }
             },
             cid: {
-                value: null,
+                value: 0,
+                required: false
+            },
+            ctype: {
+                value: 0,
                 required: false
             },
             showHidden: {
@@ -118,6 +124,9 @@
             },100);
         },
         oneditsave: function () {
+          var cid = $("#node-input-cid option:selected").val();
+          var ctype = $("#node-input-cid option[value="+cid+"]").attr('data-ctype')
+          $('#node-input-ctype').val(cid?ctype:'');
         }
     });
 

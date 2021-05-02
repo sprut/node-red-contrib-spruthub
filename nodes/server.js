@@ -307,7 +307,7 @@ module.exports = function (RED) {
                 for (var i2 in data.accessories[i]['services']) {
                     for (var i3 in data.accessories[i]['services'][i2]['characteristics']) {
                         key = data.accessories[i]['aid'] + '_' + data.accessories[i]['services'][i2]['iid'];
-                        characteristic = data.accessories[i]['services'][i2]['characteristics'][i3]['type'];
+                        characteristic = data.accessories[i]['services'][i2]['characteristics'][i3]['iid'];
                         val = data.accessories[i]['services'][i2]['characteristics'][i3]['value'];
 
                         if (!(key in values)) values[key] = {};
@@ -341,7 +341,7 @@ module.exports = function (RED) {
                                 if (cid) {
                                     for (var i3 in node.accessories.accessories[i]['services'][i2]['characteristics']) {
                                         // res['accessory'][node.accessories.accessories[i]['services'][i2]['characteristics'][i3]['type']] = node.accessories.accessories[i]['services'][i2]['characteristics'][i3];
-                                        if (node.accessories.accessories[i]['services'][i2]['characteristics'][i3]['type'] == cid) {
+                                        if (node.accessories.accessories[i]['services'][i2]['characteristics'][i3]['iid'] == cid) {
                                             res['characteristic'] = node.accessories.accessories[i]['services'][i2]['characteristics'][i3];
                                         }
                                     }
@@ -470,17 +470,26 @@ module.exports = function (RED) {
             }
 
             //value was changed
-            if (parts.length > 2 && parts[2] == 'accessories') {
-                var uid = parts[3] + '_' + parts[4];
-                if (!(uid in node.current_values)) node.current_values[uid] = {};
+            ///spruthub/accessories/166/25/27 1055.0
+            //spruthub/accessories/Aid/Sid/Cid
+            //accessories = 2, aid = 3, sid = 4, cid = 5
 
-                var value = SprutHubHelper.convertVarType(messageString);
-                node.current_values[uid][parts[6]] = value;
+            if (parts.length === 6 && parts[2] === 'accessories') {
+                var aid = parts[3];
+                var sid = parts[4];
+                var cid = parts[5];
+                var service_id =  aid+"_"+sid
+
+                if (!(service_id in node.current_values)) node.current_values[service_id] = {};
+
+                node.current_values[service_id][cid] = SprutHubHelper.convertVarType(messageString);
 
                 node.emit('onMQTTMessage', {
                     topic: topic,
-                    uid: uid,
-                    cid: parts[6]
+                    service_id: service_id,
+                    aid: aid,
+                    sid: sid,
+                    cid: cid
                 });
             }
         }

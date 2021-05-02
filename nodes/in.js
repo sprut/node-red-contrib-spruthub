@@ -14,11 +14,10 @@ module.exports = function(RED) {
             node.cleanTimer = null;
             node.server = RED.nodes.getNode(node.config.server);
             node.serviceType = undefined;
-            node.config.cid = node.config.cid==='0'?'':node.config.cid;
+            node.config.cid = parseInt(node.config.cid);
 
             node.status({}); //clean
 
-            // console.log(node.config);
 
             if (typeof(node.config.uid) != 'object' || !(node.config.uid).length) {
                 node.status({
@@ -62,6 +61,24 @@ module.exports = function(RED) {
             }
         }
 
+        getCidByType(service_id, type) {
+            var node = this;
+            var meta = node.getServiceType(service_id);
+
+            var cid = 0;
+
+            if (type) {
+                for (var i in meta.service.characteristics) {
+                    if (meta.service.characteristics[i]['type'] === type) {
+                        cid = meta.service.characteristics[i]['iid'];
+                        break;
+                    }
+                }
+            }
+
+            return parseInt(cid);
+        }
+
         _sendStatusMultiple() {
             var node = this;
             var uidArr = node.config.uid;
@@ -74,10 +91,22 @@ module.exports = function(RED) {
                 if (uid in node.server.current_values) {
                     var meta = node.getServiceType(uid);
                     payload[uid] = {};
-                    payload[uid]['payload'] = node.server.current_values[uid];
-                    payload[uid]['topic'] = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/'+meta['service']['type']+'/#';
+                    payload[uid]['meta'] = meta;
+                    payload[uid]['topic'] = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/#';
                     payload[uid]['elementId'] = SprutHubHelper.generateElementId(payload[uid]['topic']);
                     payload[uid]['meta'] = meta;
+
+                    //format payload
+                    var p = {};
+                    for (var cid in node.server.current_values[uid]) {
+                        for (var i2 in meta.service.characteristics) {
+                            if (meta.service.characteristics[i2]['iid'] === parseInt(cid)) {
+                                p[meta.service.characteristics[i2]['type']] = node.server.current_values[uid][cid];
+                                break;
+                            }
+                        }
+                    }
+                    payload[uid]['payload'] = p;
 
                     math.push(payload[uid]['payload']);
                 }
@@ -108,8 +137,9 @@ module.exports = function(RED) {
         _sendStatusSingle(topic = null) {
             var node = this;
             var uid = node.config.uid[0];
-            var cid = node.config.cid?node.config.cid:false;
+            var cid = node.config.cid
 
+            // console.log(node.server.current_values);
 
             if (uid in node.server.current_values) {
                 var meta = node.getServiceType(uid);
@@ -120,7 +150,10 @@ module.exports = function(RED) {
                     if (cid in node.server.current_values[uid]) {
 
                         var payload = node.server.current_values[uid][cid];
-                        if (!topic) topic = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/'+meta['service']['type']+'/'+meta['characteristic']['type'];
+
+                        // console.log(payload);
+
+                        if (!topic) topic = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/'+cid;
 
                         var unit = meta && "characteristic" in meta && "unit" in meta['characteristic']?meta['characteristic']['unit']:'';
                         if (unit) unit = RED._("node-red-contrib-spruthub/server:unit."+unit, ""); //add translation
@@ -151,7 +184,7 @@ module.exports = function(RED) {
                         clearTimeout(node.cleanTimer);
                         node.cleanTimer = setTimeout(function () {
                             node.status({
-                                fill: "green",
+                                fill: "grey",
                                 shape: "ring",
                                 text: payload + (unit?' '+unit:'')
                             });
@@ -159,8 +192,20 @@ module.exports = function(RED) {
                     }
 
                 } else { //output all
-                    var payload = node.server.current_values[uid];
-                    if (!topic) topic = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/'+meta['service']['type']+'/#';
+                    //format payload
+                    var p = {};
+                    for (var cid in node.server.current_values[uid]) {
+                        for (var i2 in meta.service.characteristics) {
+                            if (meta.service.characteristics[i2]['iid'] === parseInt(cid)) {
+                                p[meta.service.characteristics[i2]['type']] = node.server.current_values[uid][cid];
+                                break;
+                            }
+                        }
+                    }
+                    var payload = p;//node.server.current_values[uid];
+                    // payload[uid]['payload'] = p;
+
+                    if (!topic) topic = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/#';
 
                     if (node.firstMsg && !node.config.outputAtStartup) {
                         node.firstMsg = false;
@@ -212,15 +257,10 @@ module.exports = function(RED) {
 
         onMQTTMessage(data) {
             var node = this;
-
-            if (node.config.uid && (node.config.uid).includes(data.uid)
-            && (!node.config.cid || (node.config.cid && node.config.cid == data.cid))) {
-
-                // if (node.config.uid == '145_10') {
-                //     console.log('====>'+node.config.cid + ' == '+ data.cid);
-                // }
-
-                node.sendStatus(data.topic);
+            if (node.config.uid && (node.config.uid).includes(data.service_id)) {
+                if (!node.config.cid || (node.config.cid && parseInt(data.cid) === node.config.cid)) {
+                    node.sendStatus(data.topic);
+                }
             }
         }
 

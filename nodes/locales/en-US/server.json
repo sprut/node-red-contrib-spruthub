@@ -29,7 +29,9 @@
         "accessories": "accessories",
         "accessory": "accessory",
         "command": "Command",
-        "payload": "Payload"
+        "payload": "Payload",
+        "rbe": "RBE",
+        "rbe_help": "Send only changes"
     },
     "placeholder": {
         "name": "Name"
@@ -45,7 +47,8 @@
         "no_connection": "no connection",
         "connected": "connected",
         "received": "received",
-        "sent": "sent"
+        "sent": "sent",
+        "rbe": "no change"
     },
     "tip": {
         "deploy": "<b>Important:</b> deploy server node to get devices list"

@@ -1,6 +1,6 @@
 function spruthub_devicesSelect(val, options) {
     var $select = $("#node-input-uid");
-    var $characteristic = $("#node-input-cid");
+    var $characteristicId = $("#node-input-cid");
     var $server = $("#node-input-server");
     var $friendlyName = $("#node-input-friendly_name");
     var $refreshBtn = $("#force-refresh");
@@ -36,17 +36,38 @@ function spruthub_devicesSelect(val, options) {
         var groupHtml = '';
         var devices = data;
         var characteristics = {};
+        // console.log(devices);
         $.each(devices, function(index, value) {
             if (Object.keys(value.services).length) {
+                // var group = Object.keys(value.services).length > 1;
                 if (!value.AccessoryInformation.hidden || (value.AccessoryInformation.hidden && withHidden)) {
-                    groupHtml = $('<optgroup/>', {label: value.AccessoryInformation.characteristics.Name.value + "<br><i class='sh_serial'>" + value.AccessoryInformation.characteristics.Model.value + ": " + value.AccessoryInformation.characteristics.SerialNumber.value + "</i>"});
-                    groupHtml.appendTo($select);
-                    $.each(value.services, function (index2, value2) {
+
+                    var room = "C_AccessoryExtInfo" in value && "C_Room" in value.C_AccessoryExtInfo.characteristics && value.C_AccessoryExtInfo.characteristics.C_Room.value?'<sup> ('+value.C_AccessoryExtInfo.characteristics.C_Room.value+')</sup>':'';
+
+                    // if (group) {
+                    //     groupHtml = $('<optgroup/>', {
+                    //         label: value.AccessoryInformation.characteristics.Name.value + "<br><i class='sh_serial'>" +
+                    //             value.AccessoryInformation.characteristics.Model.value + ": " + value.AccessoryInformation.characteristics.SerialNumber.value +
+                    //             "</i>"
+                    //     });
+                    //     groupHtml.appendTo($select);
+                    // }
+
+                    $.each(value.services, function(index2, value2) {
                         if (!value2.hidden || (value2.hidden && withHidden)) {
-                            $('<option value="' + value.AccessoryInformation.aid+"_"+value2.iid + '">' + value2.characteristics.Name.value + '</option>').appendTo(groupHtml);
+
+                            // if (group) {
+                            //     $('<option value="' + value.AccessoryInformation.aid + "_" + value2.iid + '">' + value2.characteristics.Name.value+ room +
+                            //         '</option>').appendTo(groupHtml);
+                            // } else {
+                                $('<option value="' + value.AccessoryInformation.aid + "_" + value2.iid + '"><b>' + value2.characteristics.Name.value + "</b>"+room+"<br>  <i class='sh_serial'>" +
+                                    value.AccessoryInformation.characteristics.Model.value + ": " + value.AccessoryInformation.characteristics.SerialNumber.value +
+                                    "</i>" +
+                                    '</option>').appendTo($select);
+                            // }
 
                             //selected
-                            if (!$enableMultiple.is(':checked') && val == value.AccessoryInformation.aid+"_"+value2.iid) {
+                            if (!$enableMultiple.is(':checked') && val == value.AccessoryInformation.aid + "_" + value2.iid) {
                                 characteristics = value2.characteristics;
                             }
                         }
@@ -77,7 +98,7 @@ function spruthub_devicesSelect(val, options) {
                 $friendlyName.val(cnt + " " + (cnt > 1?RED._("node-red-contrib-spruthub/server:label.accessories"):RED._("node-red-contrib-spruthub/server:label.accessory")));
             }
 
-            var selectedCharacteristic = $characteristic.multipleSelect('getSelects');
+            var selectedCharacteristic = $characteristicId.multipleSelect('getSelects');
             spruthub_characteristicsSelect(devices, selectedCharacteristic.length?selectedCharacteristic[0]:null);
         });
 
@@ -104,24 +125,25 @@ function spruthub_devicesSelect(val, options) {
 function spruthub_characteristicsSelect(devices, cid) {
     var $service = $("#node-input-uid");
     var $characteristic_wr = $("#sh_cid_wr");
-    var $characteristic = $("#node-input-cid");
+    var $characteristicId = $("#node-input-cid");
+    var $characteristicType = $("#node-input-ctype");
     var enableMultiple = $('#node-input-enableMultiple').is(':checked');
 
 
-    $characteristic.multipleSelect('destroy');
-    $characteristic.multipleSelect({
+    $characteristicId.multipleSelect('destroy');
+    $characteristicId.multipleSelect({
         single: true,
         maxHeight: 300,
         dropWidth: 320,
         width: 320,
         filter: false
     });
-    $characteristic.children().remove();
+    $characteristicId.children().remove();
 
-    if ($characteristic.data('first')) {
-        $('<option value="">' + RED._($characteristic.data('first')) + '</option>').appendTo($characteristic);
+    if ($characteristicId.data('first')) {
+        $('<option value="0">' + RED._($characteristicId.data('first')) + '</option>').appendTo($characteristicId);
     } else {
-        $('<option value="">' + RED._("node-red-contrib-spruthub/server:multiselect.all") + '</option>').appendTo($characteristic);
+        $('<option value="0">' + RED._("node-red-contrib-spruthub/server:multiselect.all") + '</option>').appendTo($characteristicId);
     }
 
 
@@ -130,7 +152,7 @@ function spruthub_characteristicsSelect(devices, cid) {
         $characteristic_wr.hide();
         return;
     } else {
-        $characteristic.multipleSelect('disable');
+        $characteristicId.multipleSelect('disable');
         $characteristic_wr.show();
     }
     if (!devices) return;
@@ -156,16 +178,16 @@ function spruthub_characteristicsSelect(devices, cid) {
 
     if (characteristics) {
         $.each(characteristics, function (index, c) {
-            $('<option value="' + c.type + '">' + c.type + '</option>').appendTo($characteristic);
-            // $('<option value="' + c.iid + '">' + c.type + ' (' + c.value + ')' + '</option>').appendTo($characteristic);
+            $('<option value="' + c.iid + '" data-ctype="'+c.type+'">' + c.description + '</option>').appendTo($characteristicId);
+            // $('<option value="' + c.iid + '">' + c.type + ' (' + c.value + ')' + '</option>').appendTo($characteristicId);
         });
-        $characteristic.val(cid);
+        $characteristicId.val(cid);
     } else {
-        $characteristic.val(0);
+        $characteristicId.val(0);
     }
 
-    $characteristic.multipleSelect('enable');
-    $characteristic.multipleSelect('refresh');
+    $characteristicId.multipleSelect('enable');
+    $characteristicId.multipleSelect('refresh');
 }
 
 function spruthub_truncateWithEllipses(text, max = 30) {
