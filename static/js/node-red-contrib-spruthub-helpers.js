@@ -60,15 +60,18 @@ function spruthub_devicesSelect(val, options) {
                             //     $('<option value="' + value.AccessoryInformation.aid + "_" + value2.iid + '">' + value2.characteristics.Name.value+ room +
                             //         '</option>').appendTo(groupHtml);
                             // } else {
-                                $('<option value="' + value.AccessoryInformation.aid + "_" + value2.iid + '"><b>' + value2.characteristics.Name.value + "</b>"+room+"<br>  <i class='sh_serial'>" +
-                                    value.AccessoryInformation.characteristics.Model.value + ": " + value.AccessoryInformation.characteristics.SerialNumber.value +
+                            if ("characteristics" in value2 && "Name" in value2.characteristics) { //homekit controller bug
+                                $('<option value="' + value.AccessoryInformation.aid + "_" + value2.iid + '"><b>' + value2.characteristics.Name.value + "</b>" +
+                                    room + "<br>  <i class='sh_serial'>" +
+                                    value.AccessoryInformation.characteristics.Model.value + ": " +
+                                    value.AccessoryInformation.characteristics.SerialNumber.value +
                                     "</i>" +
                                     '</option>').appendTo($select);
-                            // }
 
-                            //selected
-                            if (!$enableMultiple.is(':checked') && val == value.AccessoryInformation.aid + "_" + value2.iid) {
-                                characteristics = value2.characteristics;
+                                //selected
+                                if (!$enableMultiple.is(':checked') && val == value.AccessoryInformation.aid + "_" + value2.iid) {
+                                    characteristics = value2.characteristics;
+                                }
                             }
                         }
                     });
@@ -178,7 +181,7 @@ function spruthub_characteristicsSelect(devices, cid) {
 
     if (characteristics) {
         $.each(characteristics, function (index, c) {
-            $('<option value="' + c.iid + '" data-ctype="'+c.type+'">' + c.description + '</option>').appendTo($characteristicId);
+            $('<option value="' + c.iid + '" data-ctype="'+c.type+'">' + c.description + ' ('+c.type +')' + '</option>').appendTo($characteristicId);
             // $('<option value="' + c.iid + '">' + c.type + ' (' + c.value + ')' + '</option>').appendTo($characteristicId);
         });
         $characteristicId.val(cid);
