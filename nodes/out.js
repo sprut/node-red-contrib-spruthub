@@ -111,10 +111,13 @@ module.exports = function(RED) {
                 var uid = node.config.uid[i];
 
                 var meta = null;
+                var cid = null;
                 var topic = '';
                 if (typeof(payload) == 'object') {
                     var sentCnt = 0;
-                    for (var cid in payload) {
+                    for (var characteristicName in payload) {
+                        meta = node.getServiceType(uid);
+                        cid = meta['accessory'][meta['service']['type']][characteristicName]['iid'];
 
                         var lastValue = node.server.current_values[uid][cid];
                         if (node.config.payloadType === 'sh_payload' && payload === 'toggle') {
@@ -122,10 +125,12 @@ module.exports = function(RED) {
                         }
 
                         meta = node.getServiceType(uid, cid);
+
+                        // console.log(meta['accessory'][ meta['service']['type']][cid]['iid']);
                         if (meta['service'] !== undefined && meta['characteristic'] !== undefined) {
                             topic = node.server.getBaseTopic() + '/accessories/' + uid.split('_').join('/') + '/' + cid + '/set';
-                            node.log('Published to mqtt topic: ' + topic + ' : ' + payload[cid] + "");
-                            node.server.mqtt.publish(topic, payload[cid] + "");
+                            node.log('Published to mqtt topic: ' + topic + ' : ' + payload[characteristicName] + "");
+                            node.server.mqtt.publish(topic, payload[characteristicName] + "");
                             node.last_change = new Date().getTime();
                             sentCnt++;
                         } else {
@@ -168,14 +173,14 @@ module.exports = function(RED) {
             node.status({
                 fill: "green",
                 shape: "dot",
-                text: (typeof(payload) == 'object'?"node-red-contrib-spruthub/server:status.sent":payload) + timeText
+                text: (typeof(payload) == 'object'?JSON.stringify(payload):payload) + timeText
             });
 
             node.cleanTimer = setTimeout(function() {
                 node.status({
                     fill: "grey",
                     shape: "ring",
-                    text: (typeof(payload) == 'object'?"node-red-contrib-spruthub/server:status.sent":payload) + timeText
+                    text: (typeof(payload) == 'object'?JSON.stringify(payload):payload) + timeText
                 });
             }, 3000);
         }
