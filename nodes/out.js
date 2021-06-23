@@ -14,7 +14,6 @@ module.exports = function(RED) {
             node.serviceType = undefined;
             node.config.cid = node.config.cid==='0'?'':node.config.cid;
 
-
             if (typeof(node.config.uid) != 'object' || !(node.config.uid).length) {
                 node.status({
                     fill: "red",

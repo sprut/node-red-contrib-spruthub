@@ -30,7 +30,8 @@ function spruthub_devicesSelect(val, options) {
     spruthub_characteristicsSelect({}, null);
 
     $.getJSON('spruthub/getDevices', {
-        controllerID: $server.val()
+        controllerID: $server.val(),
+        forceRefresh: options.refresh
     }).done(function (data, textStatus, jqXHR) {
 
         var groupHtml = '';
@@ -81,21 +82,31 @@ function spruthub_devicesSelect(val, options) {
 
         $select.multipleSelect('enable');
         $select.multipleSelect('refresh');
-
         if ($enableMultiple.is(':checked') && typeof(val) == 'object') {
             for (var index in val) {
                 $select.multipleSelect('check', val[index]);
             }
         } else {
-            $select.multipleSelect('check', val);
+            if (typeof(val) == 'object') {
+                for (var index in val) {
+                    $select.multipleSelect('check', val[index]);
+                }
+            } else {
+                $select.multipleSelect('check', val);
+            }
         }
 
         spruthub_characteristicsSelect(devices, options.cid);
 
+        function stripHtml(html){
+            let doc = new DOMParser().parseFromString(html, 'text/html');
+            return doc.body.textContent || "";
+        }
+
         $select.off('change').on('change', function(){
             if (!$enableMultiple.is(':checked')) {
                 var selectedValues = $select.multipleSelect('getSelects', 'text');
-                $friendlyName.val(selectedValues.length == 1 ? selectedValues[0] : '');
+                $friendlyName.val(selectedValues.length == 1 ? stripHtml(selectedValues[0]) : '');
             } else {
                 var cnt = $select.multipleSelect('getSelects').length;
                 $friendlyName.val(cnt + " " + (cnt > 1?RED._("node-red-contrib-spruthub/server:label.accessories"):RED._("node-red-contrib-spruthub/server:label.accessory")));
@@ -115,6 +126,7 @@ function spruthub_devicesSelect(val, options) {
         spruthub_devicesSelect(val, options);
     });
     $refreshBtn.off('click').on('click', function(){
+        options.refresh = true;
         spruthub_devicesSelect(val, options);
     });
     $showHidden.off('change').on('change', function(){

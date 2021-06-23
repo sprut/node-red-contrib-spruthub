@@ -155,13 +155,19 @@ module.exports = function (RED) {
         async getAccessories(force = false) {
             var node = this;
 
-            var data = await node.getApiCall('/api/homekit/json').catch(error => {
-                node.warn(error);
-                return (error);
-            });
-            if (SprutHubHelper.isJson(data)) {
-                node.accessories = JSON.parse(data);
-                node.saveCurrentValues(node.accessories);
+            if (force || !node.accessories) {
+                // console.log('Parsing data');
+                var data = await node.getApiCall('/api/homekit/json').catch(error => {
+                    node.warn(error);
+                    return (error);
+                });
+                if (SprutHubHelper.isJson(data)) {
+                    node.accessories = JSON.parse(data);
+                    node.saveCurrentValues(node.accessories);
+                    return node.accessories;
+                }
+            } else {
+                // console.log('Cached data');
                 return node.accessories;
             }
         }
