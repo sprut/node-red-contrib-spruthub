@@ -131,7 +131,7 @@
             $('#node-input-payloadType').val(node.payloadType);
 
             setTimeout(function () {
-                spruthub_devicesSelect(node.uid, {cid:node.cid});
+                spruthub_devicesSelect(node.uid, {cid:node.cid, allowEmpty:true});
             },100);
         }
     });

@@ -10,7 +10,8 @@ function spruthub_devicesSelect(val, options) {
 
     options = $.extend({
         refresh:false,
-        showHidden:withHidden
+        showHidden:withHidden,
+        allowEmpty:false
     }, options);
 
 
@@ -33,12 +34,20 @@ function spruthub_devicesSelect(val, options) {
         controllerID: $server.val(),
         forceRefresh: options.refresh
     }).done(function (data, textStatus, jqXHR) {
-
         var groupHtml = '';
+
+        if (!$enableMultiple.is(':checked')) {
+            if (options.allowEmpty) {
+                $('<option value="">msg.topic</option>').appendTo($select);
+                ;
+            }
+        }
+
         var devices = data;
         var characteristics = {};
         // console.log(devices);
         $.each(devices, function(index, value) {
+
             if (Object.keys(value.services).length) {
                 // var group = Object.keys(value.services).length > 1;
                 if (!value.AccessoryInformation.hidden || (value.AccessoryInformation.hidden && withHidden)) {

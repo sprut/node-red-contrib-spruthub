@@ -13,6 +13,9 @@ module.exports = function(RED) {
             node.last_change = null;
             node.serviceType = undefined;
             node.config.cid = node.config.cid==='0'?'':node.config.cid;
+            node.config.uid =  (node.config.uid).filter(function (el) {
+                return el;
+            });
             node.uids = node.config.uid;
 
             if (node.server)  {

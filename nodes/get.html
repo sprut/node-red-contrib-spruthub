@@ -99,7 +99,7 @@
             var node = this;
 
             setTimeout(function () {
-                spruthub_devicesSelect(node.uid, {cid:node.cid});
+                spruthub_devicesSelect(node.uid, {cid:node.cid, allowEmpty:true});
             },100);
         },
         oneditsave: function () {

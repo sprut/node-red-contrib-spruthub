@@ -14,6 +14,9 @@ module.exports = function(RED) {
             node.serviceType = undefined;
             node.message_in = null;
             node.config.cid = node.config.cid==='0'?'':node.config.cid;
+            node.config.uid =  (node.config.uid).filter(function (el) {
+                return el;
+            });
             node.uids = node.config.uid;
 
             if (node.server)  {
@@ -51,7 +54,7 @@ module.exports = function(RED) {
 
         _sendStatusMultiple() {
             var node = this;
-            var uidArr = fignode.con.uid;
+            var uidArr = node.config.uid;
 
             var payload  = {};
             var math = [];
