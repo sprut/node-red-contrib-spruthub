@@ -14,17 +14,30 @@ module.exports = function(RED) {
             node.serviceType = undefined;
             node.message_in = null;
             node.config.cid = node.config.cid==='0'?'':node.config.cid;
+            node.uids = node.config.uid;
 
-
-            if (typeof(node.config.uid) != 'object' || !(node.config.uid).length) {
-                node.status({
-                    fill: "red",
-                    shape: "dot",
-                    text: "node-red-contrib-spruthub/server:status.no_accessory"
-                });
-            } else if (node.server)  {
+            if (node.server)  {
                 node.on('input', function (message_in) {
                     node.message_in = message_in;
+
+                    //overwrite with topic
+                    if ((!node.config.uid || !(node.config.uid).length) && "topic" in message_in) {
+                        node.uids = [];
+                        if (typeof(message_in.topic) == 'string' ) {
+                            var parsedTopic = SprutHubHelper.parseTopic(message_in.topic);
+                            (node.uids).push(parsedTopic['uid']);
+
+                            this.config.enableMultiple = false;
+                        } else if (typeof(message_in.topic) == 'object') {
+                            for (var i in message_in.topic) {
+                                var parsedTopic = SprutHubHelper.parseTopic(message_in.topic[i]);
+                                (node.uids).push(parsedTopic['uid']);
+                            }
+
+                            if ((node.uids).length > 1) this.config.enableMultiple = true;
+                        }
+                    }
+
                     node.sendStatus();
                 });
             } else {
@@ -38,7 +51,7 @@ module.exports = function(RED) {
 
         _sendStatusMultiple() {
             var node = this;
-            var uidArr = node.config.uid;
+            var uidArr = fignode.con.uid;
 
             var payload  = {};
             var math = [];
@@ -88,7 +101,7 @@ module.exports = function(RED) {
 
         _sendStatusSingle() {
             var node = this;
-            var uid = node.config.uid[0];
+            var uid = node.uids[0];
             var cid = node.config.cid?node.config.cid:false;
 
             if (uid in node.server.current_values) {

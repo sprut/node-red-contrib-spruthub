@@ -63,10 +63,7 @@
                 required: false
             },
             uid: {
-                required: true,
-                validate:function(v) {
-                    return typeof(v)=="object" && v.length;
-                }
+                required: false
             },
             cid: {
                 value: null,
@@ -136,7 +133,6 @@
             setTimeout(function () {
                 spruthub_devicesSelect(node.uid, {cid:node.cid});
             },100);
-
         }
     });
 </script>

@@ -13,14 +13,9 @@ module.exports = function(RED) {
             node.last_change = null;
             node.serviceType = undefined;
             node.config.cid = node.config.cid==='0'?'':node.config.cid;
+            node.uids = node.config.uid;
 
-            if (typeof(node.config.uid) != 'object' || !(node.config.uid).length) {
-                node.status({
-                    fill: "red",
-                    shape: "dot",
-                    text: "node-red-contrib-spruthub/server:status.no_accessory"
-                });
-            } else if (node.server)  {
+            if (node.server)  {
                 node.on('input', function (message) {
                     node.processInput(message);
                 });
@@ -36,6 +31,24 @@ module.exports = function(RED) {
         processInput(message) {
             var node = this;
             clearTimeout(node.cleanTimer);
+
+            //overwrite with topic
+            if ((!node.config.uid || !(node.config.uid).length) && "topic" in message) {
+                node.uids = [];
+                if (typeof(message.topic) == 'string' ) {
+                    var parsedTopic = SprutHubHelper.parseTopic(message.topic);
+                    (node.uids).push(parsedTopic['uid']);
+
+                    this.config.enableMultiple = false;
+                } else if (typeof(message.topic) == 'object') {
+                    for (var i in message.topic) {
+                        var parsedTopic = SprutHubHelper.parseTopic(message.topic[i]);
+                        (node.uids).push(parsedTopic['uid']);
+                    }
+
+                    if ((node.uids).length > 1) this.config.enableMultiple = true;
+                }
+            }
 
             var payload;
             switch (node.config.payloadType) {
@@ -106,8 +119,8 @@ module.exports = function(RED) {
 
             // var rbe = "rbe" in node.config && node.config.rbe;
 
-            for (var i in node.config.uid) {
-                var uid = node.config.uid[i];
+            for (var i in node.uids) {
+                var uid = node.uids[i];
 
                 var meta = null;
                 var cid = null;

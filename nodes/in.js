@@ -19,6 +19,7 @@ module.exports = function(RED) {
             node.status({}); //clean
 
 
+
             if (typeof(node.config.uid) != 'object' || !(node.config.uid).length) {
                 node.status({
                     fill: "red",
