@@ -39,7 +39,6 @@ function spruthub_devicesSelect(val, options) {
         if (!$enableMultiple.is(':checked')) {
             if (options.allowEmpty) {
                 $('<option value="">msg.topic</option>').appendTo($select);
-                ;
             }
         }
 

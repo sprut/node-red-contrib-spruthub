@@ -54,7 +54,7 @@ module.exports = function(RED) {
 
         _sendStatusMultiple() {
             var node = this;
-            var uidArr = node.config.uid;
+            var uidArr = node.uids;
 
             var payload  = {};
             var math = [];
@@ -177,7 +177,7 @@ module.exports = function(RED) {
         }
 
         sendStatus() {
-            if (!this.config.uid) return;
+            if (!this.uids || !(this.uids).length) return;
 
             if (this.config.enableMultiple) {
                 this._sendStatusMultiple();
