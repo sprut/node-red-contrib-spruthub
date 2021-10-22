@@ -21,6 +21,7 @@ function spruthub_devicesSelect(val, options) {
         maxHeight: 300,
         dropWidth: 320,
         width: 320,
+        minimumCountSelected:!$enableMultiple.is(':checked')?1:0,
         filter: true,
         filterPlaceholder: RED._("node-red-contrib-spruthub/server:multiselect.filter_devices")
     });
@@ -91,9 +92,11 @@ function spruthub_devicesSelect(val, options) {
         $select.multipleSelect('enable');
         $select.multipleSelect('refresh');
         if ($enableMultiple.is(':checked') && typeof(val) == 'object') {
-            for (var index in val) {
-                $select.multipleSelect('check', val[index]);
-            }
+            $select.multipleSelect('setSelects', val);
+            // for (var index in val) {
+            //     console.log(val[index]);
+            //     // $select.multipleSelect('check', val[index]);
+            // }
         } else {
             if (typeof(val) == 'object') {
                 for (var index in val) {
