@@ -76,7 +76,7 @@ module.exports = function (RED) {
                 port: node.mqtt_port,
                 username: node.config.mqtt_username || null,
                 password: node.config.mqtt_password || null,
-                clientId: "NodeRed-" + node.id + (clientId ? "-" + clientId : ""),
+                clientId:"NodeRed-"+node.id+"-"+(Math.random() + 1).toString(36).substring(7)
                 connectTimeout: 5000,
                 reconnectPeriod: 5000
             };
