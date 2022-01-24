@@ -1,5 +1,5 @@
 const SprutHubHelper = require('../lib/SprutHubHelper.js');
-var mqtt = require('mqtt');
+
 
 module.exports = function(RED) {
     class SprutHubNodeOut {
@@ -19,6 +19,14 @@ module.exports = function(RED) {
             node.uids = node.config.uid;
 
             if (node.server)  {
+                node.listener_onDisconnected = function() { node.onDisconnected(); }
+                node.server.on('onDisconnected', node.listener_onDisconnected);
+
+                node.listener_onConnected = function() { node.onConnected(); }
+                node.server.on('onConnected', node.listener_onConnected);
+
+                node.onConnected();
+
                 node.on('input', function (message) {
                     node.processInput(message);
                 });
@@ -120,92 +128,98 @@ module.exports = function(RED) {
                 return false;
             }
 
-            // var rbe = "rbe" in node.config && node.config.rbe;
+            let rbe = "rbe" in node.config && node.config.rbe;
 
+            let dataToSend = [];
             for (var i in node.uids) {
-                var uid = node.uids[i];
+                let uid = node.uids[i];
+                let cid = null;
+                let meta = null;
 
-                var meta = null;
-                var cid = null;
-                var topic = '';
-                if (typeof(payload) == 'object') {
-                    var sentCnt = 0;
+                if (typeof (payload) == 'object') {
                     for (var characteristicName in payload) {
                         meta = node.getServiceType(uid);
-                        cid = meta['accessory'][meta['service']['type']][characteristicName]['iid'];
+                        cid = meta['accessory'][meta['service']['type']][characteristicName]['cId'];
 
-                        var lastValue = node.server.current_values[uid][cid];
-                        if (node.config.payloadType === 'sh_payload' && payload === 'toggle') {
-                            payload = lastValue?0:1;
-                        }
-
-                        meta = node.getServiceType(uid, cid);
-
-                        // console.log(meta['accessory'][ meta['service']['type']][cid]['iid']);
-                        if (meta['service'] !== undefined && meta['characteristic'] !== undefined) {
-                            topic = node.server.getBaseTopic() + '/accessories/' + uid.split('_').join('/') + '/' + cid + '/set';
-                            node.log('Published to mqtt topic: ' + topic + ' : ' + payload[characteristicName] + "");
-                            node.server.mqtt.publish(topic, payload[characteristicName] + "");
-                            node.last_change = new Date().getTime();
-                            sentCnt++;
-                        } else {
-                            node.warn('Check you payload. No such characteristic: '+cid);
-                        }
-                    }
-                    if (!sentCnt) {
-                        node.status({
-                            fill: "red",
-                            shape: "dot",
-                            text: "node-red-contrib-spruthub/server:status.no_characteristic"
+                        dataToSend.push({
+                            'aId': parseInt(uid.split('_')[0]),
+                            'cId': parseInt(cid),
+                            'new_value': payload[characteristicName],
+                            'last_value': node.server.current_values[uid][cid]
                         });
-                        return false;
                     }
                 } else {
-                    if (!node.config.cid) {
-                        node.status({
-                            fill: "red",
-                            shape: "dot",
-                            text: "node-red-contrib-spruthub/server:status.no_characteristic"
-                        });
-                        return false;
-                    }
-
-                    var lastValue = node.server.current_values[uid][node.config.cid];
-                    if (node.config.payloadType === 'sh_payload' && payload === 'toggle') {
-                        payload = lastValue?0:1;
-                    }
-
-                    meta = node.getServiceType(uid, node.config.cid);
-                    topic = node.server.getBaseTopic() + '/accessories/' + uid.split('_').join('/') + '/' + node.config.cid+ '/set';
-                    node.log('Published to mqtt topic: ' + topic + ' : ' + payload+"");
-                    node.server.mqtt.publish(topic, payload+"");
-                    node.last_change = new Date().getTime();
+                    dataToSend.push({
+                        'aId': parseInt(uid.split('_')[0]),
+                        'cId': parseInt(node.config.cid),
+                        'new_value': payload,
+                        'last_value': node.server.current_values[uid][node.config.cid]
+                    });
                 }
             }
 
-            var timeText = ' [' + new Date(node.last_change).toLocaleDateString('ru-RU') + ' ' + new Date(node.last_change).toLocaleTimeString('ru-RU') + ']';
+            for (var i in dataToSend) {
+                let row = dataToSend[i];
 
-            node.status({
-                fill: "green",
-                shape: "dot",
-                text: (typeof(payload) == 'object'?JSON.stringify(payload):payload) + timeText
-            });
+                if (rbe && row['last_value'] === row['new_value']) {
+                    node.log('Skipped RBE value');
+                    continue;
+                }
 
-            node.cleanTimer = setTimeout(function() {
-                node.status({
-                    fill: "grey",
-                    shape: "ring",
-                    text: (typeof(payload) == 'object'?JSON.stringify(payload):payload) + timeText
-                });
-            }, 3000);
+                if (node.config.payloadType === 'sh_payload' && row['new_value'] === 'toggle') {
+                    row['new_value'] = row['last_value']?0:1;
+                }
+
+                let data = {'aId':row['aId'], 'cId':row['cId'], 'value': row['new_value'], 'expand':'' };
+                node.log('Published to jRPC: characteristic.update : ' + JSON.stringify(data));
+
+                node.server.ws.call('characteristic.update', data, 1000).then(function(result) {
+                    node.status({
+                        fill: "green",
+                        shape: "dot",
+                        text: (typeof(row['new_value']) == 'object'?JSON.stringify(row['new_value']):row['new_value'])
+                    });
+
+                    node.last_change = new Date().getTime();
+                    var timeText = SprutHubHelper.statusUpdatedAt(node.last_change);
+                    node.cleanTimer = setTimeout(function() {
+                        node.status({
+                            fill: "grey",
+                            shape: "ring",
+                            text: (typeof(row['new_value']) == 'object'?JSON.stringify(row['new_value']):row['new_value']) + timeText
+                        });
+                    }, 3000);
+                }).catch(function(error) {
+                    node.status({
+                        fill: "red",
+                        shape: "dot",
+                        text: "node-red-contrib-spruthub/server:status.no_connection"
+                    });
+                    node.log(error);
+                })
+            }
         }
-
 
         getServiceType(uid, cid) {
             return this.server.getServiceType(uid, cid);
         }
-    }
 
+        onConnected() {
+            let node = this;
+            node.status({});
+        }
+
+        onDisconnected() {
+            var node = this;
+
+            if (node.listener_onConnected) {
+                node.server.removeListener("onConnected", node.listener_onConnected);
+            }
+            if (node.listener_onDisconnected) {
+                node.server.removeListener("onDisconnected", node.listener_onDisconnected);
+            }
+        }
+    }
 
     RED.nodes.registerType('spruthub-out', SprutHubNodeOut);
 };

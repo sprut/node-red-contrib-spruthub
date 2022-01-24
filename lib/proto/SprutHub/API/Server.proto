@@ -1,0 +1,150 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "org.makesimple.SprutHub.API";
+option java_outer_classname = "ServerProto";
+
+package SprutHub.API;
+
+import "SprutHub/API/Utils.proto";
+
+service ServerService {
+  rpc getOptions(ServerGetOptionsRequest) returns (OptionsMessage);
+  rpc setOptions(ServerSetOptionsRequest) returns (EmptyResponse);
+  rpc version(VersionRequest) returns (VersionMessage);
+  rpc restart(ServerRestartRequest) returns (EmptyResponse);
+  rpc upgrade(ServerUpgradeRequest) returns (EmptyResponse);
+  rpc login(ServerLoginRequest) returns (ServerLoginResponse);
+  rpc register(ServerRegisterRequest) returns (ServerRegisterResponse);
+  rpc confirmEmail(ServerConfirmEmailRequest) returns (ServerConfirmEmailResponse);
+  rpc resendEmailPin(ServerResendEmailPinRequest) returns (ServerResendEmailPinResponse);
+  rpc pool(ServerPoolRequest) returns (ServerPoolResponse);
+  rpc notify(ServerNotifyMessage) returns (EmptyResponse);
+}
+
+message ServerGetOptionsRequest {}
+
+message ServerSetOptionsRequest {
+  repeated KeyValueMessage option = 2;
+}
+
+message VersionRequest {}
+
+message VersionMessage {
+  optional string branch = 1;
+  optional string version = 2;
+  optional string revision = 3;
+  optional uint64 timestamp = 4;
+  optional string lastVersion = 5;
+  optional string lastRevision = 6;
+  optional uint64 lastBuildTime = 7;
+  optional string owner = 8;
+  optional string serial = 9;
+}
+
+message ServerRestartRequest {}
+
+message ServerUpgradeRequest {}
+
+message ServerLoginRequest {
+  optional string email = 1;
+  optional string password = 2; // TODO временно в незашифрованном виде
+}
+
+message ServerLoginResponse {
+  optional ServerAuthStatus status = 1; // Успешна ли авторизация
+  optional string message = 2; // Текст ошибки
+  optional string token = 3; // Если аккаунт не подтвержден, то временный токен, иначе постоянный
+  optional int32 pinDelay = 4; // Задержка до ввода пин кода, в секундах
+}
+
+message ServerRegisterRequest {
+  optional string email = 1;
+  optional string password = 2; // TODO временно в незашифрованном виде
+}
+
+message ServerRegisterResponse {
+  optional ServerAuthStatus status = 1; // Успешна ли регистрация
+  optional string message = 2; // Текст ошибки
+  optional string token = 3; // Временный токен для подтверждения аккаунта
+  optional int32 pinDelay = 4; // Задержка до ввода пин кода, в секундах
+}
+
+message ServerConfirmEmailRequest {
+  optional string email = 1; // Почта, которую нужно подтвердить
+  optional string token = 2; // Временный токен
+  optional string pin = 3; // Пин код, отправленный на почту
+}
+
+message ServerConfirmEmailResponse {
+  optional ServerConfirmEmailStatus status = 1; // Успешно ли подтверждение
+  optional string message = 2; // Текст ошибки
+  optional string token = 3; // Временный токен для подтверждения аккаунта
+  optional int32 pinDelay = 4; // Задержка до ввода пин кода, в секундах
+}
+
+message ServerResendEmailPinRequest {
+  optional string email = 1; // Почта для переотправки пин кода
+  optional string token = 2; // Временный токен
+}
+
+message ServerResendEmailPinResponse {
+  optional ServerResendEmailPinStatus status = 1; // Успешно ли подтверждение
+  optional string message = 2; // Текст ошибки
+  optional string token = 3; // Временный токен для подтверждения аккаунта
+  optional int32 pinDelay = 4; // Задержка до ввода пин кода, в секундах
+}
+
+message ServerPoolRequest {
+  optional bool extended = 1;
+  optional bool query = 2;
+  optional bool work = 3;
+}
+
+message ServerPoolResponse {
+  optional string info = 1; // TODO структурировать
+}
+
+message ServerNotifyMessage {
+  optional uint64 created = 1;
+  optional string text = 2;
+  optional ServerNotifyLevel level = 3;
+  optional string groupId = 4;
+  optional uint32 progress = 5;
+  optional uint32 duration = 6;
+  optional string group = 7;
+  optional string icon = 8;
+  optional string title = 9;
+  optional string descr = 10;
+}
+
+enum ServerAuthStatus {
+  AUTH_SUCCESS = 0;
+  AUTH_FAILED = 1;
+  AUTH_NOT_CONFIRMED = 2;
+  AUTH_FORMAT = 3;
+  AUTH_NOT_CONNECTED = 4;
+  AUTH_SERVER_TIMEOUT = 5;
+}
+
+enum ServerConfirmEmailStatus {
+  CONFIRM_SUCCESS = 0;
+  CONFIRM_FAILED = 1;
+  CONFIRM_ACCESS_DENIED = 2;
+  CONFIRM_INVALID_TOKEN = 3;
+  CONFIRM_PIN_NOT_MATCH = 4;
+}
+
+enum ServerResendEmailPinStatus {
+  RESEND_EMAIL_PIN_SUCCESS = 0;
+  RESEND_EMAIL_PIN_FAILED = 1;
+  RESEND_EMAIL_PIN_ACCESS_DENIED = 2;
+  RESEND_EMAIL_PIN_INVALID_TOKEN = 3;
+  RESEND_EMAIL_PIN_TOO_FAST = 4;
+}
+
+enum ServerNotifyLevel {
+  NOTIFY_INFO = 0;
+  NOTIFY_SUCCESS = 1;
+  NOTIFY_ERROR = 2;
+}

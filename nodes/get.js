@@ -1,5 +1,4 @@
 const SprutHubHelper = require('../lib/SprutHubHelper.js');
-var mqtt = require('mqtt');
 
 module.exports = function(RED) {
     class SprutHubNodeGet {
@@ -20,28 +19,49 @@ module.exports = function(RED) {
             node.uids = node.config.uid;
 
             if (node.server)  {
-                node.on('input', function (message_in) {
-                    node.message_in = message_in;
+                node.listener_onDisconnected = function() { node.onDisconnected(); }
+                node.server.on('onDisconnected', node.listener_onDisconnected);
 
-                    //overwrite with topic
-                    if ((!node.config.uid || !(node.config.uid).length) && "topic" in message_in) {
-                        node.uids = [];
-                        if (typeof(message_in.topic) == 'string' ) {
-                            var parsedTopic = SprutHubHelper.parseTopic(message_in.topic);
-                            (node.uids).push(parsedTopic['uid']);
+                node.listener_onConnected = function() { node.onConnected(); }
+                node.server.on('onConnected', node.listener_onConnected);
 
-                            this.config.enableMultiple = false;
-                        } else if (typeof(message_in.topic) == 'object') {
-                            for (var i in message_in.topic) {
-                                var parsedTopic = SprutHubHelper.parseTopic(message_in.topic[i]);
+                node.onConnected();
+
+                node.on('input', function(message_in) {
+                    if (node.server.connection) {
+                        node.message_in = message_in;
+
+                        //overwrite with elementId
+                        // if ((!node.config.uid || !(node.config.uid).length) && "elementId" in message_in) {
+                        //     // message_in.topic = node.server.getTopicByElementId(message_in.elementId);
+                        // }
+
+                        //overwrite with topic
+                        if ((!node.config.uid || !(node.config.uid).length) && "topic" in message_in) {
+                            node.uids = [];
+                            if (typeof (message_in.topic) == 'string') {
+                                var parsedTopic = SprutHubHelper.parseTopic(message_in.topic);
                                 (node.uids).push(parsedTopic['uid']);
+
+                                this.config.enableMultiple = false;
+                            } else if (typeof (message_in.topic) == 'object') {
+                                for (var i in message_in.topic) {
+                                    var parsedTopic = SprutHubHelper.parseTopic(message_in.topic[i]);
+                                    (node.uids).push(parsedTopic['uid']);
+                                }
+
+                                if ((node.uids).length > 1) this.config.enableMultiple = true;
                             }
-
-                            if ((node.uids).length > 1) this.config.enableMultiple = true;
                         }
-                    }
 
-                    node.sendStatus();
+                        node.sendStatus();
+                    } else {
+                        node.status({
+                            fill: "red",
+                            shape: "dot",
+                            text: "node-red-contrib-spruthub/server:status.no_connection"
+                        });
+                    }
                 });
             } else {
                 node.status({
@@ -72,7 +92,7 @@ module.exports = function(RED) {
                     var p = {};
                     for (var cid in node.server.current_values[uid]) {
                         for (var i2 in meta.service.characteristics) {
-                            if (meta.service.characteristics[i2]['iid'] === parseInt(cid)) {
+                            if (meta.service.characteristics[i2]['cId'] === parseInt(cid)) {
                                 p[meta.service.characteristics[i2]['type']] = node.server.current_values[uid][cid];
                                 break;
                             }
@@ -98,7 +118,11 @@ module.exports = function(RED) {
             });
             clearTimeout(node.cleanTimer);
             node.cleanTimer = setTimeout(function () {
-                node.status({});
+                node.status({
+                    fill: "grey",
+                    shape: "ring",
+                    text: SprutHubHelper.statusUpdatedAt()
+                });
             }, 3000);
         }
 
@@ -118,14 +142,18 @@ module.exports = function(RED) {
                         payload = SprutHubHelper.isNumber(payload)?parseFloat(payload):payload;
                         var topic = node.server.getBaseTopic()+'/accessories/'+uid.split('_').join('/')+'/'+cid;
 
-                        var unit = meta && "characteristic" in meta && "unit" in meta['characteristic']?meta['characteristic']['unit']:'';
+                        var unit = "unit" in meta?meta['unit']:'';
                         if (unit) unit = RED._("node-red-contrib-spruthub/server:unit."+unit, ""); //add translation
 
                         var text = payload + (unit?' '+unit:'');
 
                         clearTimeout(node.cleanTimer);
                         node.cleanTimer = setTimeout(function () {
-                            node.status({text: text,fill: "grey",shape: "ring"});
+                            node.status({
+                                fill: "grey",
+                                shape: "ring",
+                                text: text+' '+SprutHubHelper.statusUpdatedAt()
+                            });
                         }, 3000);
 
                     }
@@ -135,7 +163,7 @@ module.exports = function(RED) {
                     var p = {};
                     for (var cid in node.server.current_values[uid]) {
                         for (var i2 in meta.service.characteristics) {
-                            if (meta.service.characteristics[i2]['iid'] === parseInt(cid)) {
+                            if (meta.service.characteristics[i2]['cId'] === parseInt(cid)) {
                                 p[meta.service.characteristics[i2]['type']] = node.server.current_values[uid][cid];
                                 break;
                             }
@@ -148,7 +176,11 @@ module.exports = function(RED) {
 
                     clearTimeout(node.cleanTimer);
                     node.cleanTimer = setTimeout(function () {
-                        node.status({});
+                        node.status({
+                            fill: "grey",
+                            shape: "ring",
+                            text: SprutHubHelper.statusUpdatedAt()
+                        });
                     }, 3000);
                 }
 
@@ -192,6 +224,22 @@ module.exports = function(RED) {
                 return node.serviceType;
             } else {
                 return node.server.getServiceType(uid, node.config.cid);
+            }
+        }
+
+        onConnected() {
+            let node = this;
+            node.status({});
+        }
+
+        onDisconnected() {
+            var node = this;
+
+            if (node.listener_onConnected) {
+                node.server.removeListener("onConnected", node.listener_onConnected);
+            }
+            if (node.listener_onDisconnected) {
+                node.server.removeListener("onDisconnected", node.listener_onDisconnected);
             }
         }
     }

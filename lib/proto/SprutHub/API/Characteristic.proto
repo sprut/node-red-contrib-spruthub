@@ -1,0 +1,141 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "org.makesimple.SprutHub.API";
+option java_outer_classname = "CharacteristicProto";
+
+package SprutHub.API;
+
+import "google/protobuf/struct.proto";
+import "SprutHub/API/Link.proto";
+import "SprutHub/API/Trigger.proto";
+import "SprutHub/API/Utils.proto";
+import "SprutHub/API/ValidValue.proto";
+
+service CharacteristicService {
+  rpc list(CharacteristicListRequest) returns (CharacteristicsMessage);
+  rpc get(CharacteristicGetRequest) returns (CharacteristicMessage);
+  rpc update(CharacteristicUpdateRequest) returns (CharacteristicMessage);
+  rpc types(CharacteristicTypesRequest) returns (CharacteristicTypesMessage);
+  rpc subscribe(CharacteristicSubscribeRequest) returns (EmptyResponse);
+  rpc event(CharacteristicEvent) returns (EmptyResponse);
+  rpc value(CharacteristicValue) returns (EmptyResponse);
+}
+
+message CharacteristicListRequest {
+  optional uint32 aId = 1;
+  optional uint32 sId = 2;
+}
+
+message CharacteristicGetRequest {
+  optional uint32 aId = 1;
+  optional uint32 cId = 2;
+}
+
+message CharacteristicUpdateRequest {
+  optional uint32 aId = 1;
+  optional uint32 cId = 2;
+  optional string format = 3;
+  optional bool read = 4;
+  optional bool write = 5;
+  optional bool events = 6;
+  optional bool hidden = 7;
+  optional float minValue = 8;
+  optional float maxValue = 9;
+  optional float minStep = 10;
+  optional uint32 maxLen = 11;
+  optional uint32 maxDataLen = 12;
+  optional string valueType = 13;
+  optional google.protobuf.Value value = 14;
+  optional string offset = 15;
+  repeated ValidValueMessage validValue = 16;
+  optional string data = 17;
+  optional uint32 linkProcessing = 18;
+}
+
+message CharacteristicMessage {
+  optional uint32 aId = 1;
+  optional uint32 sId = 2;
+  optional uint32 cId = 3;
+  optional string desc = 4;
+  optional string type = 5;
+  optional string typeName = 6;
+  optional string googleType = 7;
+  optional string yandexType = 8;
+  optional string mailRuType = 9;
+  optional string format = 10;
+  optional bool read = 11;
+  optional bool write = 12;
+  optional bool events = 13;
+  optional bool hidden = 14;
+  optional float minValue = 15;
+  optional float maxValue = 16;
+  optional float minStep = 17;
+  optional uint32 maxLen = 18;
+  optional uint32 maxDataLen = 19;
+  optional string valueType = 20;
+  optional google.protobuf.Value value = 21;
+  optional google.protobuf.Value offset = 22;
+  repeated ValidValueMessage validValue = 23;
+  optional string data = 24; // TODO
+  optional uint32 linkProcessing = 25;
+  repeated LinkMessage link = 26;
+  repeated TriggerMessage trigger = 27;
+}
+
+message CharacteristicsMessage {
+  repeated CharacteristicMessage characteristic = 1;
+}
+
+message CharacteristicTypesRequest {}
+
+message CharacteristicTypeMessage {
+  optional string id = 1;
+  optional string shortId = 2;
+  optional string type = 3;
+  optional string name = 4;
+  optional string format = 5;
+  optional bool read = 6;
+  optional bool write = 7;
+  optional bool events = 8;
+  optional bool hidden = 9;
+  optional float minValue = 10;
+  optional float maxValue = 11;
+  optional float minStep = 12;
+  optional uint32 maxLen = 13;
+  optional string unit = 14;
+  optional string validValue = 15;
+}
+
+message CharacteristicTypesMessage {
+  repeated CharacteristicTypeMessage type = 1;
+}
+
+message CharacteristicSubscribe {
+  optional uint32 aId = 1;
+  optional uint32 sId = 2;
+  optional uint32 cId = 3;
+  optional string sType = 4;
+  optional string cType = 5;
+  repeated SubscribeType event = 6;
+}
+
+message CharacteristicSubscribeRequest {
+  repeated CharacteristicSubscribe subscribe = 1;
+}
+
+message CharacteristicEvent {
+  optional SubscribeType event = 1;
+  repeated CharacteristicMessage characteristic = 2;
+}
+
+message CharacteristicValue {
+  optional uint32 aId = 1;
+  optional uint32 sId = 2;
+  optional uint32 cId = 3;
+  optional google.protobuf.Value value = 4;
+}
+
+message CharacteristicValues {
+  repeated CharacteristicValue event = 1;
+}

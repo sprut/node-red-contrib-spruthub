@@ -1,5 +1,4 @@
 const SprutHubHelper = require('./lib/SprutHubHelper.js');
-var request = require('request');
 var NODE_PATH = '/spruthub/';
 
 module.exports = function(RED) {

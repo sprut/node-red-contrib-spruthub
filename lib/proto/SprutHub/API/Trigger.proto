@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "org.makesimple.SprutHub.API";
+option java_outer_classname = "TriggerProto";
+
+package SprutHub.API;
+
+import "SprutHub/API/ValidValue.proto";
+
+service TriggerService {
+  rpc list(TriggerListRequest) returns (TriggersMessage);
+  rpc create(TriggerCreateRequest) returns (TriggerMessage);
+  rpc delete(TriggerDeleteRequest) returns (TriggerMessage);
+}
+
+message TriggerListRequest {
+}
+
+message TriggerCreateRequest {
+  optional uint32 id = 1;
+  optional uint32 aId = 2;
+  optional uint32 sId = 3;
+  optional uint32 cId = 4;
+  optional string value = 5;
+  optional string cond = 6;
+  optional uint32 t_aid = 7;
+  optional uint32 t_sid = 8;
+  optional uint32 t_cid = 9;
+  optional string t_value1 = 10;
+  optional string t_value2 = 11;
+}
+
+message TriggerDeleteRequest {
+  optional int32 id = 1;
+}
+
+message TriggerMessage {
+  optional uint32 id = 1;
+  optional uint32 aId = 2;
+  optional uint32 sId = 3;
+  optional uint32 cId = 4;
+  optional string value = 5;
+  optional string cond = 6;
+  optional uint32 t_aid = 7;
+  optional uint32 t_sid = 8;
+  optional uint32 t_cid = 9;
+  optional string t_value1 = 10;
+  optional string t_value2 = 11;
+  optional string s_room = 12;
+  optional string s_accessory = 13;
+  optional string s_service = 14;
+  optional string s_characteristic = 15;
+  repeated ValidValueMessage s_validValue = 16;
+  optional string t_room = 17;
+  optional string t_accessory = 18;
+  optional string t_service = 19;
+  optional string t_characteristic = 20;
+  repeated ValidValueMessage t_validValue = 21;
+}
+
+message TriggersMessage {
+  repeated TriggerMessage trigger = 1;
+}

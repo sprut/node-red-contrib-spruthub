@@ -14,7 +14,6 @@ function spruthub_devicesSelect(val, options) {
         allowEmpty:false
     }, options);
 
-
     $select.multipleSelect('destroy');
     $select.multipleSelect({
         single: !$enableMultiple.is(':checked'),
@@ -71,7 +70,19 @@ function spruthub_devicesSelect(val, options) {
                             //         '</option>').appendTo(groupHtml);
                             // } else {
                             if ("characteristics" in value2 && "Name" in value2.characteristics) { //homekit controller bug
-                                $('<option value="' + value.AccessoryInformation.aid + "_" + value2.iid + '"><b>' + value2.characteristics.Name.value + "</b>" +
+                                // aId: 201
+                                // characteristics: {C_TargetPositionState: {…}, Name: {…}, CurrentPosition: {…}, PositionState: {…}, TargetPosition: {…}}
+                                // data: {Logic: {…}}
+                                // googleType: "WINDOW"
+                                // mailRuType: "OPENABLE$CURTAIN"
+                                // name: "Штора"
+                                // rawName: "Штора"
+                                // sId: 11
+                                // type: "WindowCovering"
+                                // typeName: "Штора"
+                                // visible: true
+                                // yandexType: "OPENABLE$CURTAIN"
+                                $('<option value="' + value2.aId+ "_" + value2.sId + '"><b>' + value2.characteristics.Name.value + "</b>" +
                                     room + "<br>  <i class='sh_serial'>" +
                                     value.AccessoryInformation.characteristics.Model.value + ": " +
                                     value.AccessoryInformation.characteristics.SerialNumber.value +
@@ -79,7 +90,7 @@ function spruthub_devicesSelect(val, options) {
                                     '</option>').appendTo($select);
 
                                 //selected
-                                if (!$enableMultiple.is(':checked') && val == value.AccessoryInformation.aid + "_" + value2.iid) {
+                                if (!$enableMultiple.is(':checked') && val == value2.aId + "_" + value2.sId) {
                                     characteristics = value2.characteristics;
                                 }
                             }
@@ -110,8 +121,8 @@ function spruthub_devicesSelect(val, options) {
         spruthub_characteristicsSelect(devices, options.cid);
 
         function stripHtml(html){
-            let doc = new DOMParser().parseFromString(html, 'text/html');
-            return doc.body.textContent || "";
+            let $html = $('<div>'+html+'</div>');
+            return $html.find('b').text()+' '+$html.find('sup').text();
         }
 
         $select.off('change').on('change', function(){
@@ -141,6 +152,7 @@ function spruthub_devicesSelect(val, options) {
         spruthub_devicesSelect(val, options);
     });
     $showHidden.off('change').on('change', function(){
+        options['showHidden'] = $showHidden.is(':checked');
         spruthub_devicesSelect(val, options);
     });
     $enableMultiple.off('change').on('change', function(){
@@ -154,6 +166,7 @@ function spruthub_characteristicsSelect(devices, cid) {
     var $characteristicId = $("#node-input-cid");
     var $characteristicType = $("#node-input-ctype");
     var enableMultiple = $('#node-input-enableMultiple').is(':checked');
+    var $friendlyName = $("#node-input-friendly_name");
 
 
     $characteristicId.multipleSelect('destroy');
@@ -194,7 +207,7 @@ function spruthub_characteristicsSelect(devices, cid) {
         $.each(devices, function (index, value) {
             if (Object.keys(value.services).length) {
                 $.each(value.services, function (index2, value2) {
-                    if (uid == value.AccessoryInformation.aid + "_" + value2.iid) {
+                    if (uid == value2.aId + "_" + value2.sId) {
                         characteristics = value2.characteristics;
                     }
                 });
@@ -204,8 +217,21 @@ function spruthub_characteristicsSelect(devices, cid) {
 
     if (characteristics) {
         $.each(characteristics, function (index, c) {
-            $('<option value="' + c.iid + '" data-ctype="'+c.type+'">' + c.description + ' ('+c.type +')' + '</option>').appendTo($characteristicId);
-            // $('<option value="' + c.iid + '">' + c.type + ' (' + c.value + ')' + '</option>').appendTo($characteristicId);
+            // aId: 147
+            // cId: 14
+            // data: {}
+            // desc: "Name"
+            // events: false
+            // format: "string"
+            // hidden: false
+            // maxLen: 64
+            // read: true
+            // sId: 13
+            // type: "Name"
+            // typeName: "Имя"
+            // value: "Батарея"
+            // write: false
+            $('<option value="' + c.cId + '" data-ctype="'+c.type+'">' + c.typeName + ' ('+c.type +')' + '</option>').appendTo($characteristicId);
         });
         $characteristicId.val(cid);
     } else {
@@ -214,6 +240,10 @@ function spruthub_characteristicsSelect(devices, cid) {
 
     $characteristicId.multipleSelect('enable');
     $characteristicId.multipleSelect('refresh');
+    $characteristicId.off('change').on('change', function(){
+        let friendlyName = $('<div>'+$service.multipleSelect('getSelects', 'text')[0]+'</div>').find('b').text() + ' ' + $('<div>'+$service.multipleSelect('getSelects', 'text')[0]+'</div>').find('sup').text();
+        $friendlyName.val(friendlyName + ($characteristicId.val()>0?' : '+$characteristicId.multipleSelect('getSelects', 'text')[0].replace(/(.*)\s\((.*)\)/, '$1'):''));
+    });
 }
 
 function spruthub_truncateWithEllipses(text, max = 30) {

@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "org.makesimple.SprutHub.API";
+option java_outer_classname = "HomekitProto";
+
+package SprutHub.API;
+
+import "SprutHub/API/Utils.proto";
+
+service HomekitService {
+  rpc list(HomekitListRequest) returns (HomekitListResponse);
+  rpc clearUsers(HomekitClearUsersRequest) returns (EmptyResponse);
+  rpc resetConnections(HomekitResetConnectionsRequest) returns (EmptyResponse);
+}
+
+message HomekitListRequest {}
+
+message HomekitListResponse {
+  string json = 1;
+}
+
+message HomekitClearUsersRequest {}
+
+message HomekitResetConnectionsRequest {}
+

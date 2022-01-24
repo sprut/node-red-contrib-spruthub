@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "org.makesimple.SprutHub.API";
+option java_outer_classname = "AccessoryProto";
+
+package SprutHub.API;
+
+import "SprutHub/API/Utils.proto";
+import "SprutHub/API/Controller.proto";
+import "SprutHub/API/Device.proto";
+import "SprutHub/API/Service.proto";
+
+service AccessoryService {
+  rpc list(AccessoryListRequest) returns (AccessoriesMessage);
+  rpc get(AccessoryGetRequest) returns (AccessoryMessage);
+  rpc create(AccessoryCreateRequest) returns (AccessoryMessage);
+  rpc delete(AccessoryDeleteRequest) returns (AccessoryMessage);
+  rpc update(AccessoryUpdateRequest) returns (AccessoryMessage);
+  rpc subscribe(AccessorySubscribeRequest) returns (EmptyResponse);
+  rpc event(AccessoryEvent) returns (EmptyResponse);
+}
+
+message AccessoryListRequest {
+  optional string expand = 1;
+}
+
+message AccessoryGetRequest {
+  optional uint32 id = 1;
+  string expand = 2;
+}
+
+message AccessoryCreateRequest {
+  optional uint32 endpoint = 1;
+  optional string name = 2;
+  optional uint32 roomId = 3;
+  optional bool visible = 4;
+  repeated ServiceCreateRequest services = 5;
+  string expand = 6;
+}
+
+message AccessoryDeleteRequest {
+  optional uint32 id = 1;
+  string expand = 2;
+}
+
+message AccessoryUpdateRequest {
+  optional uint32 id = 1;
+  optional string name = 2;
+  optional uint32 roomId = 3;
+  optional bool visible = 4;
+  string expand = 5;
+}
+
+message AccessoryMessage {
+  optional uint32 id = 1;
+  optional uint32 endpoint = 2;
+  optional string name = 3;
+  optional string rawName = 4;
+  optional string manufacturer = 5;
+  optional string model = 6;
+  optional string serial = 7;
+  optional string firmware = 8;
+  optional uint32 roomId = 9;
+  optional bool visible = 10;
+  optional bool hasOptions = 11;
+  optional uint64 lastUpdate = 12;
+  optional string deviceId = 13;
+  optional DeviceMessage device = 14;
+  optional string controllerIndex = 15;
+  optional ControllerMessage controler = 16;
+  repeated ServiceMessage service = 17;
+}
+
+message AccessoriesMessage {
+  repeated AccessoryMessage accessory = 1;
+}
+
+message AccessorySubscribe {
+  optional uint32 id = 1;
+  repeated SubscribeType event = 2;
+}
+
+message AccessorySubscribeRequest {
+  repeated AccessorySubscribe subscribe = 1;
+}
+
+message AccessoryEvent {
+  optional SubscribeType event = 1;
+  repeated AccessoryMessage accessory = 2;
+}

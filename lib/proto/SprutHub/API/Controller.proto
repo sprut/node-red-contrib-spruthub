@@ -1,0 +1,130 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "org.makesimple.SprutHub.API";
+option java_outer_classname = "ControllerProto";
+
+package SprutHub.API;
+
+import "SprutHub/API/Device.proto";
+import "SprutHub/API/Utils.proto";
+
+service ControllerService {
+  rpc list(ControllerListRequest) returns (ControllersMessage);
+  rpc get(ControllerGetRequest) returns (ControllerMessage);
+  rpc create(ControllerCreateRequest) returns (ControllerMessage);
+  rpc delete(ControllerDeleteRequest) returns (ControllerMessage);
+  rpc update(ControllerUpdateRequest) returns (ControllerMessage);
+  rpc types(ControllerTypesRequest) returns (ControllerTypesMessage);
+  rpc getOptions(ControllerGetOptionsRequest) returns (OptionsMessage);
+  rpc setOptions(ControllerSetOptionsRequest) returns (EmptyResponse);
+  rpc discovery(ControllerDiscoveryMessage) returns (EmptyResponse);
+  rpc exclusion(ControllerExclusionMessage) returns (EmptyResponse);
+  rpc scan(ControllerScanRequest) returns (EmptyResponse);
+  rpc updateMesh(ControllerUpdateMeshRequest) returns (EmptyResponse);
+  rpc healMesh(ControllerHealMeshRequest) returns (EmptyResponse);
+  rpc deleteAccessories(ControllerDeleteAccessoriesRequest) returns (EmptyResponse);
+  rpc event(ControllerEvent) returns (EmptyResponse);
+}
+
+message ControllerListRequest {
+  string expand = 1;
+}
+
+message ControllerGetRequest {
+  optional string index = 1;
+  string expand = 2;
+}
+
+message ControllerCreateRequest {
+  optional string type = 1;
+  optional string name = 2;
+}
+
+message ControllerDeleteRequest {
+  optional string index = 1;
+}
+
+message ControllerUpdateRequest {
+  optional string index = 1;
+  optional string name = 2;
+  optional bool enabled = 3;
+}
+
+message ControllerTypesRequest {}
+
+message ControllerGetOptionsRequest {
+  optional string index = 1;
+}
+
+message ControllerSetOptionsRequest {
+  optional string index = 1;
+  repeated KeyValueMessage option = 2;
+}
+
+message ControllerDiscoveryMessage {
+  optional string index = 1;
+  optional string deviceId = 2;
+  optional bool state = 3;
+}
+
+message ControllerExclusionMessage {
+  optional string index = 1;
+  optional bool state = 2;
+}
+
+message ControllerScanRequest {
+  optional string index = 1;
+}
+
+message ControllerUpdateMeshRequest {
+  optional string index = 1;
+}
+
+message ControllerHealMeshRequest {
+  optional string index = 1;
+}
+
+message ControllerDeleteAccessoriesRequest {
+  optional string index = 1;
+}
+
+message ControllerMessage {
+  optional uint32 id = 1;
+  optional string type = 2;
+  optional string index = 3;
+  optional string name = 4;
+  optional string icon = 5;
+  optional bool enabled = 6;
+  optional ReleaseState release = 7;
+  optional ControllerState state = 8;
+  optional uint32 deviceCnt = 9;
+  repeated DeviceMessage device = 10;
+}
+
+message ControllerEvent {
+  optional SubscribeType event = 1;
+  repeated ControllerMessage controller = 2;
+}
+
+message ControllersMessage {
+  repeated ControllerMessage controller = 1;
+}
+
+message ControllerTypesMessage {
+  repeated string type = 1;
+}
+
+enum ReleaseState {
+  ALPHA = 0;
+  BETA = 1;
+  RELEASE = 2;
+}
+
+enum ControllerState {
+  STATE_NOT_LOADED = 0;
+  STATE_LOADING = 1;
+  STATE_LOADED = 2;
+  STATE_FAILED = 3;
+}
+

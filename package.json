@@ -9,11 +9,14 @@
   "bundleDependencies": false,
   "dependencies": {
     "eventsource": "^0.2.1",
-    "mqtt": "^4.2.6",
-    "multiple-select": "^1.4.1",
+    "multiple-select": "^1.5.2",
     "request": "^2.81.0",
-    "@grpc/proto-loader": "latest",
-    "@grpc/grpc-js": "latest"
+    "zlib": "^1.0.5",
+    "@babel/runtime": "^7.11.2",
+    "circular-json": "^0.5.9",
+    "eventemitter3": "^4.0.7",
+    "uuid": "^8.3.0",
+    "ws": "^7.4.5"
   },
   "deprecated": false,
   "description": "Sprut.hub connectivity nodes for node-red",
@@ -40,5 +43,5 @@
     "type": "git",
     "url": "git+https://github.com/andreypopov/node-red-contrib-spruthub.git"
   },
-  "version": "1.1.6"
+  "version": "2.0.0"
 }

@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "org.makesimple.SprutHub.API";
+option java_outer_classname = "LinkMessageProto";
+
+package SprutHub.API;
+
+import "google/protobuf/struct.proto";
+import "SprutHub/API/Utils.proto";
+
+service LinkService {
+  rpc list(LinkListRequest) returns (LinksMessage);
+  rpc add(LinkAddRequest) returns (LinkMessage);
+  rpc remove(LinkRemoveRequest) returns (LinkMessage);
+}
+
+message LinkListRequest {
+  optional uint32 aId = 1;
+  optional uint32 cId = 2;
+}
+
+message LinkAddRequest {
+  optional uint32 aId = 1;
+  optional uint32 cId = 2;
+  optional string linkId = 3;
+}
+
+message LinkRemoveRequest {
+  optional uint32 aId = 1;
+  optional uint32 cId = 2;
+  optional string linkId = 3;
+}
+
+message LinkMessage {
+  optional uint32 aId = 1;
+  optional uint32 sId = 2;
+  optional uint32 cId = 3;
+  optional string linkId = 4;
+  optional string controller = 5;
+  optional string device = 6;
+  optional string characteristic = 7;
+  optional string type = 8;
+  optional google.protobuf.Value value = 9;
+  repeated string params = 10;
+}
+
+message LinksMessage {
+  repeated LinkMessage link = 1;
+}

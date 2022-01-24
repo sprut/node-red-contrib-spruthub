@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "org.makesimple.SprutHub.API";
+option java_outer_classname = "GridProto";
+
+package SprutHub.API;
+
+import "SprutHub/API/Utils.proto";
+
+service GridService {
+  rpc list(GridListRequest) returns (GridsMessage);
+  rpc update(GridUpdateRequest) returns (EmptyResponse);
+  rpc remove(GridRemoveRequest) returns (EmptyResponse);
+}
+
+message GridListRequest {}
+
+message GridUpdateRequest {
+  repeated GridsMessage grid = 1;
+}
+
+message GridRemoveRequest {
+  optional uint32 id = 1;
+}
+
+message GridMessage {
+  optional uint32 id = 1;
+  optional string item_id = 2;
+  optional uint32 platform = 3;
+  optional uint32 columns = 4;
+  optional int32 x = 5;
+  optional int32 y = 6;
+  optional uint32 width = 7;
+  optional uint32 height = 8;
+}
+
+message GridsMessage {
+  repeated GridMessage grid = 1;
+}
+
+

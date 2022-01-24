@@ -21,29 +21,18 @@
         <input type="hidden" id="node-config-input-email" value="">
     </div>
 
-
     <div class="form-row">
         <label for="node-config-input-api_password" class="l-width"><i class="fa fa-lock"></i> <span data-i18n="label.password"></span></label>
         <input type="password" id="node-config-input-api_password">
         <input type="hidden" id="node-config-input-password" value="">
     </div>
-<!--    <hr>-->
-<!--    <h3>MQTT</h3>-->
 
-<!--    <div class="form-row">-->
-<!--        <label for="node-config-input-mqtt_username" class="l-width"><i class="fa fa-user"></i> <span data-i18n="label.mqtt_username"></span></label>-->
-<!--        <input type="text" id="node-config-input-mqtt_username">-->
-<!--    </div>-->
-<!--    <div class="form-row">-->
-<!--        <label for="node-config-input-mqtt_password" class="l-width"><i class="fa fa-lock"></i> <span data-i18n="label.mqtt_password"></span></label>-->
-<!--        <input type="password" id="node-config-input-mqtt_password" autocomplete="new-password">-->
-<!--    </div>-->
-<!--        <div class="form-row">-->
-<!--        <label for="node-config-input-mqtt_port" class="l-width"><i class="fa fa-asterisk"></i> <span data-i18n="label.mqtt_port"></span></label>-->
-<!--        <input type="text" id="node-config-input-mqtt_port" placeholder="44444">-->
-<!--    </div>-->
-
-
+    <div class="form-row">
+        <label for="node-config-input-api_port" class="l-width"><i class="fa fa-asterisk"></i> <span data-i18n="label.port"></span></label>
+        <input type="text" id="node-config-input-api_port">
+        <input type="hidden" id="node-config-input-api_port" value="">
+        <div><code><span style="font-size:12px;" data-i18n="label.port_help"></span></code></div>
+    </div>
 
     <hr>
     <h3 data-i18n="label.test_connection"></h3>
@@ -56,17 +45,21 @@
 	</div>
 
 <div id="sh_check_block" style="display:none;">
+    <div id="sh_error" class="form-tips" style="margin-bottom:20px;"></div>
+
     <div class="form-row">
-        <label for="sh_mqtt" style="width:200px;"></i> <span data-i18n="label.sh_mqtt"></span></label>
-        <b><span id="sh_mqtt"><i class="fa fa-spin fa-spinner"></i></span></b>
-    </div>
-    <div class="form-row">
-        <label for="sh_auth" style="width:200px;"></i> <span data-i18n="label.sh_auth"></span></label>
+        <label for="sh_auth" style="width:200px;"> <span data-i18n="label.sh_auth"></span></label>
         <b><span id="sh_auth"><i class="fa fa-spin fa-spinner"></i></span></b>
     </div>
     <div class="form-row">
-        <label for="sh_version" style="width:200px;"></i> <span data-i18n="label.sh_version"></span></label>
-        <b><span id="sh_version"><i class="fa fa-spin fa-spinner"></i></span></b>
+        <div>
+            <label for="sh_version" style="width:200px;"> <span data-i18n="label.sh_version"></span></label>
+            <b><span id="sh_version"><i class="fa fa-spin fa-spinner"></i></span></b>
+        </div>
+        <div>
+            <label for="sh_version_new" style="width:200px;"> <span data-i18n="label.sh_new_version"></span></label>
+            <b style="color:green;"><span id="sh_version_new"></span></b>
+        </div>
     </div>
     <div class="form-row">
         <label for="sh_accessories_cnt" style="width:200px;"></i> <span data-i18n="label.sh_accessories_cnt"></span></label>
@@ -74,85 +67,75 @@
     </div>
 </div>
 
-    <div style="width: 100%" class="form-tips" data-i18n="[html]tip.deploy"></div>
+<div style="width: 100%" class="form-tips" data-i18n="[html]tip.deploy"></div>
+
 
 </script>
 
 <script type='text/javascript'>
-    RED.nodes.registerType('spruthub-server', {
-        category: 'config',
-        defaults: {
-            name: {
-                value: null,
-                required: false
-            },
-            host: {
-                value: null,
-                required: true
-            },
-            email: { //moved to credentials
-                value: "",
-                required: false
-            },
-            password: { //moved to credentials
-                value: "",
-                required: false
-            }//,
-            // token: {
-            //     value: null,
-            //     required: false
-            // },
-            // mqtt_port: {
-            //     value: 44444,
-            //     required: false
-            // },
-            // mqtt_username: {
-            //     value: null,
-            //     required: false
-            // },
-            // mqtt_password: {
-            //     value: null,
-            //     required: false
-            // }
-        },
-        credentials: {
-            api_email: {type:"text", required:true},
-            api_password: {type:"text", required:true}
-        },
-        label: function() {
-            return this.name || this.host;
-        },
-        oneditprepare: function () {
-            var node = this;
-            var $testBtn = $('#test-connection');
-            var spinner = '<i class="fa fa-spin fa-spinner"></i></span>';
+  RED.nodes.registerType('spruthub-server', {
+    category: 'config',
+    defaults: {
+      name: {
+        value: null,
+        required: false,
+      },
+      host: {
+        value: null,
+        required: true,
+      },
+      api_port: {
+        value: 80,
+        required: true,
+      },
+    },
+    credentials: {
+      api_email: {type: 'text', required: true},
+      api_password: {type: 'text', required: true},
+    },
+    label: function() {
+      return this.name || this.host;
+    },
+    oneditprepare: function() {
+      var node = this;
+      var $testBtn = $('#test-connection');
+      var spinner = '<i class="fa fa-spin fa-spinner"></i></span>';
 
+      //empty old config settings
+      $('#node-config-input-email').val('');
+      $('#node-config-input-password').val('');
 
-            //empty old config settings
-            $('#node-config-input-email').val('');
-            $('#node-config-input-password').val('');
-
-            $testBtn.off('click').on('click', function(){
-                $('#sh_auth').html(spinner);
-                $('#sh_version').html(spinner);
-                $('#sh_accessories_cnt').html(spinner);
-                $('#sh_mqtt').html(spinner);
-                $('#sh_check_block').show();
-                $.getJSON('spruthub/checkConnection', {
-                    controllerID: node.id,
-                    host:$('#node-config-input-host').val(),
-                    email:$('#node-config-input-api_email').val(),
-                    password:$('#node-config-input-api_password').val(),
-                    // mqtt_username:$('#node-config-input-mqtt_username').val(),
-                    // mqtt_password:$('#node-config-input-mqtt_password').val()
-                }).done(function (data, textStatus, jqXHR) {
-                    $('#sh_auth').text(data.auth?RED._("node-red-contrib-spruthub/server:label.ok"):RED._("node-red-contrib-spruthub/server:label.error")).css('color', data.auth?"green":"red");
-                    $('#sh_version').text(data.version?data.version:RED._("node-red-contrib-spruthub/server:label.error")).css('color', data.version?"black":"red");
-                    $('#sh_accessories_cnt').text(data.accessories_cnt?data.accessories_cnt:RED._("node-red-contrib-spruthub/server:label.error")).css('color', data.accessories_cnt?"black":"red");
-                    $('#sh_mqtt').text(data.mqtt?RED._("node-red-contrib-spruthub/server:label.ok"):RED._("node-red-contrib-spruthub/server:label.error")).css('color', data.mqtt?"green":"red");
-                });
-            });
-        }
-    });
+      $testBtn.off('click').on('click', function() {
+        $('#sh_error').hide();
+        $('#sh_auth').html(spinner);
+        $('#sh_version').html(spinner);
+        $('#sh_accessories_cnt').html(spinner);
+        $('#sh_check_block').show();
+        $.getJSON('spruthub/checkConnection', {
+          controllerID: node.id,
+          host: $('#node-config-input-host').val(),
+          port: $('#node-config-input-api_port').val(),
+          email: $('#node-config-input-api_email').val(),
+          password: $('#node-config-input-api_password').val(),
+        }).done(function(data, textStatus, jqXHR) {
+          if (data.error) {
+            $('#sh_error').html(data.error).show();
+          }
+          $('#sh_auth')
+              .text(data.auth ? RED._('node-red-contrib-spruthub/server:label.ok') : RED._(
+                  'node-red-contrib-spruthub/server:label.error'))
+              .css('color', data.auth ? 'green' : 'red');
+          $('#sh_version')
+              .text(data.version ? data.version : RED._('node-red-contrib-spruthub/server:label.error'))
+              .css('color', data.version ? 'black' : 'red');
+          if (data.version_new) $('#sh_version_new').text(data.version_new).closest('div').show();
+          else $('#sh_version_new').text('').closest('div').hide();
+          $('#sh_accessories_cnt')
+              .text(data.accessories_cnt ? data.accessories_cnt : RED._('node-red-contrib-spruthub/server:label.error'))
+              .css('color', data.accessories_cnt ? 'black' : 'red');
+        });
+      });
+    },
+  });
 </script>
 
