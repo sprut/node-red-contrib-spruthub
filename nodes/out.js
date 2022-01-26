@@ -143,6 +143,7 @@ module.exports = function(RED) {
 
                         dataToSend.push({
                             'aId': parseInt(uid.split('_')[0]),
+                            'sId': parseInt(uid.split('_')[1]),
                             'cId': parseInt(cid),
                             'new_value': payload[characteristicName],
                             'last_value': node.server.current_values[uid][cid]
@@ -151,6 +152,7 @@ module.exports = function(RED) {
                 } else {
                     dataToSend.push({
                         'aId': parseInt(uid.split('_')[0]),
+                        'sId': parseInt(uid.split('_')[1]),
                         'cId': parseInt(node.config.cid),
                         'new_value': payload,
                         'last_value': node.server.current_values[uid][node.config.cid]
@@ -170,7 +172,10 @@ module.exports = function(RED) {
                     row['new_value'] = row['last_value']?0:1;
                 }
 
-                let data = {'aId':row['aId'], 'cId':row['cId'], 'value': row['new_value'], 'expand':'' };
+                //convert var type
+                row['new_value'] = SprutHubHelper.formatValue(row['new_value'], node.getServiceType(row['aId']+'_'+row['sId'], row['cId']).characteristic.format);
+
+                let data = {'aId':row['aId'], 'cId':row['cId'], 'value':  row['new_value']};
                 node.log('Published to jRPC: characteristic.update : ' + JSON.stringify(data));
 
                 node.server.ws.call('characteristic.update', data, 1000).then(function(result) {
