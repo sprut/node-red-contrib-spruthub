@@ -17,6 +17,7 @@ module.exports = function(RED) {
                 return el;
             });
             node.uids = node.config.uid;
+            node.last_successful_status = {};
 
             if (node.server)  {
                 node.listener_onDisconnected = function() { node.onDisconnected(); }
@@ -179,7 +180,7 @@ module.exports = function(RED) {
                 node.log('Published to jRPC: characteristic.update : ' + JSON.stringify(data));
 
                 node.server.ws.call('characteristic.update', data, 1000).then(function(result) {
-                    node.status({
+                    node.setSuccessfulStatus({
                         fill: "green",
                         shape: "dot",
                         text: (typeof(row['new_value']) == 'object'?JSON.stringify(row['new_value']):row['new_value'])
@@ -188,41 +189,57 @@ module.exports = function(RED) {
                     node.last_change = new Date().getTime();
                     var timeText = SprutHubHelper.statusUpdatedAt(node.last_change);
                     node.cleanTimer = setTimeout(function() {
-                        node.status({
+                        node.setSuccessfulStatus({
                             fill: "grey",
                             shape: "ring",
                             text: (typeof(row['new_value']) == 'object'?JSON.stringify(row['new_value']):row['new_value']) + timeText
                         });
                     }, 3000);
                 }).catch(function(error) {
-                    node.status({
-                        fill: "red",
-                        shape: "dot",
-                        text: "node-red-contrib-spruthub/server:status.no_connection"
-                    });
-                    node.log(error);
+                    node.sendStatusError();
+                    node.error(error);
                 })
             }
         }
+
+        setSuccessfulStatus(obj) {
+            let node = this;
+            node.status(obj);
+            node.last_successful_status = obj;
+        }
+
+        onConnected() {
+            let node = this;
+            if (node.server.connection) {
+                node.status(node.last_successful_status);
+            } else {
+                node.sendStatusError();
+            }
+        }
+
 
         getServiceType(uid, cid) {
             return this.server.getServiceType(uid, cid);
         }
 
-        onConnected() {
-            let node = this;
-            node.status({});
+        onDisconnected() {
+            // var node = this;
+            //
+            // if (node.listener_onConnected) {
+            //     node.server.removeListener("onConnected", node.listener_onConnected);
+            // }
+            // if (node.listener_onDisconnected) {
+            //     node.server.removeListener("onDisconnected", node.listener_onDisconnected);
+            // }
         }
 
-        onDisconnected() {
+        sendStatusError(status = null) {
             var node = this;
-
-            if (node.listener_onConnected) {
-                node.server.removeListener("onConnected", node.listener_onConnected);
-            }
-            if (node.listener_onDisconnected) {
-                node.server.removeListener("onDisconnected", node.listener_onDisconnected);
-            }
+            node.status({
+                fill: "red",
+                shape: "dot",
+                text: "node-red-contrib-spruthub/server:status.no_connection"
+            });
         }
     }
 

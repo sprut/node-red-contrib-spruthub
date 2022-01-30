@@ -17,6 +17,7 @@ module.exports = function(RED) {
                 return el;
             });
             node.uids = node.config.uid;
+            node.last_successful_status = {};
 
             if (node.server)  {
                 node.listener_onDisconnected = function() { node.onDisconnected(); }
@@ -56,11 +57,7 @@ module.exports = function(RED) {
 
                         node.sendStatus();
                     } else {
-                        node.status({
-                            fill: "red",
-                            shape: "dot",
-                            text: "node-red-contrib-spruthub/server:status.no_connection"
-                        });
+                        node.sendStatusError();
                     }
                 });
             } else {
@@ -111,14 +108,14 @@ module.exports = function(RED) {
                 math:SprutHubHelper.formatMath(math)
             });
 
-            node.status({
+            node.setSuccessfulStatus({
                 fill: "green",
                 shape: "dot",
                 text: "node-red-contrib-spruthub/server:status.received"
             });
             clearTimeout(node.cleanTimer);
             node.cleanTimer = setTimeout(function () {
-                node.status({
+                node.setSuccessfulStatus({
                     fill: "grey",
                     shape: "ring",
                     text: SprutHubHelper.statusUpdatedAt()
@@ -149,7 +146,7 @@ module.exports = function(RED) {
 
                         clearTimeout(node.cleanTimer);
                         node.cleanTimer = setTimeout(function () {
-                            node.status({
+                            node.setSuccessfulStatus({
                                 fill: "grey",
                                 shape: "ring",
                                 text: text+' '+SprutHubHelper.statusUpdatedAt()
@@ -176,7 +173,7 @@ module.exports = function(RED) {
 
                     clearTimeout(node.cleanTimer);
                     node.cleanTimer = setTimeout(function () {
-                        node.status({
+                        node.setSuccessfulStatus({
                             fill: "grey",
                             shape: "ring",
                             text: SprutHubHelper.statusUpdatedAt()
@@ -193,7 +190,7 @@ module.exports = function(RED) {
                     meta: meta
                 });
 
-                node.status({
+                node.setSuccessfulStatus({
                     fill: "green",
                     shape: "dot",
                     text: text
@@ -218,6 +215,12 @@ module.exports = function(RED) {
             }
         }
 
+        setSuccessfulStatus(obj) {
+            let node = this;
+            node.status(obj);
+            node.last_successful_status = obj;
+        }
+
         getServiceType(uid) {
             var node = this;
             if (node.serviceType !== undefined) {
@@ -229,18 +232,31 @@ module.exports = function(RED) {
 
         onConnected() {
             let node = this;
-            node.status({});
+            if (node.server.connection) {
+                node.status(node.last_successful_status);
+            } else {
+                node.sendStatusError();
+            }
         }
 
         onDisconnected() {
-            var node = this;
+            // var node = this;
 
-            if (node.listener_onConnected) {
-                node.server.removeListener("onConnected", node.listener_onConnected);
-            }
-            if (node.listener_onDisconnected) {
-                node.server.removeListener("onDisconnected", node.listener_onDisconnected);
-            }
+            // if (node.listener_onConnected) {
+            //     node.server.removeListener("onConnected", node.listener_onConnected);
+            // }
+            // if (node.listener_onDisconnected) {
+            //     node.server.removeListener("onDisconnected", node.listener_onDisconnected);
+            // }
+        }
+
+        sendStatusError(status = null) {
+            var node = this;
+            node.status({
+                fill: "red",
+                shape: "dot",
+                text: "node-red-contrib-spruthub/server:status.no_connection"
+            });
         }
     }
     RED.nodes.registerType('spruthub-get', SprutHubNodeGet);

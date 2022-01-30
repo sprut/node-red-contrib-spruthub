@@ -12,7 +12,7 @@ module.exports = function(RED) {
             node.server = RED.nodes.getNode(node.config.server);
             node.serviceType = undefined;
             node.config.cid = parseInt(node.config.cid);
-// console.log(node.config );
+            node.last_successful_status = {};
             node.status({}); //clean
 
             if (typeof(node.config.uid) != 'object' || !(node.config.uid).length) {
@@ -91,15 +91,16 @@ module.exports = function(RED) {
                 math:SprutHubHelper.formatMath(math)
             });
 
-            node.status({
+            node.setSuccessfulStatus({
                 fill: "green",
                 shape: "dot",
                 text: changed?changed.value:"node-red-contrib-spruthub/server:status.received"
             });
 
+
             clearTimeout(node.cleanTimer);
             node.cleanTimer = setTimeout(function () {
-                node.status({
+                node.setSuccessfulStatus({
                     fill: "grey",
                     shape: "ring",
                     text: (changed?changed.value:'')+(' '+SprutHubHelper.statusUpdatedAt())
@@ -138,14 +139,14 @@ module.exports = function(RED) {
                             changed: changed
                         });
 
-                        node.status({
+                        node.setSuccessfulStatus({
                             fill: "green",
                             shape: "dot",
                             text: payload + (unit?' '+unit:'')
                         });
                         clearTimeout(node.cleanTimer);
                         node.cleanTimer = setTimeout(function () {
-                            node.status({
+                            node.setSuccessfulStatus({
                                 fill: "grey",
                                 shape: "ring",
                                 text: payload + (unit?' '+unit:'')+' '+SprutHubHelper.statusUpdatedAt()
@@ -177,7 +178,7 @@ module.exports = function(RED) {
                         changed: changed
                     });
 
-                    node.status({
+                    node.setSuccessfulStatus({
                         fill: "green",
                         shape: "dot",
                         text: "node-red-contrib-spruthub/server:status.received"
@@ -185,7 +186,7 @@ module.exports = function(RED) {
 
                     clearTimeout(node.cleanTimer);
                     node.cleanTimer = setTimeout(function () {
-                        node.status({
+                        node.setSuccessfulStatus({
                             fill: "grey",
                             shape: "ring",
                             text: SprutHubHelper.statusUpdatedAt()
@@ -212,6 +213,12 @@ module.exports = function(RED) {
             }
         }
 
+        setSuccessfulStatus(obj) {
+            let node = this;
+            node.status(obj);
+            node.last_successful_status = obj;
+        }
+
         onMessage(data) {
             var node = this;
             if (node.config.uid && (node.config.uid).includes(data.service_id)) {
@@ -223,23 +230,29 @@ module.exports = function(RED) {
 
         onConnected() {
             let node = this;
-            if (node.server.connection && node.config.outputAtStartup) {
-                node.sendStatus();
+            if (node.server.connection) {
+                if (node.config.outputAtStartup) {
+                    node.sendStatus();
+                } else {
+                    node.status(node.last_successful_status);
+                }
+            } else {
+                node.sendStatusError();
             }
         }
 
         onDisconnected() {
             var node = this;
 
-            if (node.listener_onConnected) {
-                node.server.removeListener("onConnected", node.listener_onConnected);
-            }
-            if (node.listener_onDisconnected) {
-                node.server.removeListener("onDisconnected", node.listener_onDisconnected);
-            }
-            if (node.listener_onMessage) {
-                node.server.removeListener("onMessage", node.listener_onMessage);
-            }
+            // if (node.listener_onConnected) {
+            //     node.server.removeListener("onConnected", node.listener_onConnected);
+            // }
+            // if (node.listener_onDisconnected) {
+            //     node.server.removeListener("onDisconnected", node.listener_onDisconnected);
+            // }
+            // if (node.listener_onMessage) {
+            //     node.server.removeListener("onMessage", node.listener_onMessage);
+            // }
 
             node.sendStatusError();
         }

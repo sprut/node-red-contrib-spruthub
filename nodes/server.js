@@ -81,13 +81,14 @@ module.exports = function(RED) {
             node.error('Failed to get SprutHub version: ' + error);
           });
 
-          node.getServiceTypes().catch(error => {
-            node.warn(error);
-          });
-          node.getAccessories().then(()=>{
-            node.emit('onConnected', {});
+          node.getServiceTypes().then(()=>{
+            node.getAccessories().then(()=>{
+              node.emit('onConnected');
+            }).catch(error => {
+              node.error(error);
+            });
           }).catch(error => {
-            node.warn(error);
+            node.error(error);
           });
 
         }).catch(function(error) {
@@ -102,7 +103,7 @@ module.exports = function(RED) {
         return await new Promise(function(resolve, reject) {
           // console.time('homekit_WS');
           // node.ws.call('homekit.list', {}, 60000).then(function(result) {
-          node.ws.call('accessory.list', {"expand": "services+characteristics"}, 30000).then(function(result) {
+          node.ws.call('accessory.list', {"expand": "services+characteristics"}, 20000).then(function(result) {
             // console.log(result.accessories[10]);
             let data = JSON.stringify(result);
             // console.log(data);
@@ -133,18 +134,19 @@ module.exports = function(RED) {
       let node = this;
       return await new Promise(function(resolve, reject) {
         // console.time('service.list');
-        node.ws.call('service.types', {}, 3000).then(function(result) {
+        node.ws.call('service.types', {}, 20000).then(function(result) {
           let data = JSON.stringify(result);
           // console.timeEnd('service.list');
           // console.log('service.list size: ' + data.length);
           if (SprutHubHelper.isJson(data)) {
-            return node.service_types = JSON.parse(data);
+             node.service_types = JSON.parse(data);
+             resolve(node.service_types);
           } else {
             reject('getServiceTypes: not JSON in the answer');
           }
 
         }).catch(function(error) {
-          node.error('ERROR #2347');
+          node.error('ERROR #2347: ' + error.message);
           reject(error);
         });
       }).catch(function(error) {
