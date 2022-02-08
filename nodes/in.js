@@ -5,7 +5,7 @@ module.exports = function(RED) {
         constructor(config) {
             RED.nodes.createNode(this, config);
 
-            var node = this;
+            let node = this;
             node.config = config;
             node.is_subscribed = false;
             node.cleanTimer = null;
@@ -15,6 +15,7 @@ module.exports = function(RED) {
             node.last_successful_status = {};
             node.status({}); //clean
 
+
             if (typeof(node.config.uid) != 'object' || !(node.config.uid).length) {
                 node.status({
                     fill: "red",
@@ -22,18 +23,10 @@ module.exports = function(RED) {
                     text: "node-red-contrib-spruthub/server:status.no_accessory"
                 });
             } else if (node.server) {
-                node.listener_onDisconnected = function() { node.onDisconnected(); }
-                node.server.on('onDisconnected', node.listener_onDisconnected);
-
-                node.listener_onConnected = function() { node.onConnected(); }
-                node.server.on('onConnected', node.listener_onConnected);
-
-                node.listener_onMessage = function(data) { node.onMessage(data); }
-                node.server.on('onMessage', node.listener_onMessage);
-
-                node.on('close', () => this.sendStatusError());
-
+                node.initListeners();
                 node.onConnected();
+
+                node.on('close', () => node.onClose());
             } else {
                 node.status({
                     fill: "red",
@@ -228,8 +221,14 @@ module.exports = function(RED) {
             }
         }
 
+        onDisconnected() {
+            let node = this;
+            node.sendStatusError();
+        }
+
         onConnected() {
             let node = this;
+            // console.log('onConnected '+ node.config.uid);
             if (node.server.connection) {
                 if (node.config.outputAtStartup) {
                     node.sendStatus();
@@ -241,24 +240,40 @@ module.exports = function(RED) {
             }
         }
 
-        onDisconnected() {
-            var node = this;
+        initListeners() {
+            let node = this;
+            // console.log('initListeners '+ node.config.uid);
+            node.listener_onDisconnected = function() { node.onDisconnected(); }
+            node.server.on('onDisconnected', node.listener_onDisconnected);
 
-            // if (node.listener_onConnected) {
-            //     node.server.removeListener("onConnected", node.listener_onConnected);
-            // }
-            // if (node.listener_onDisconnected) {
-            //     node.server.removeListener("onDisconnected", node.listener_onDisconnected);
-            // }
-            // if (node.listener_onMessage) {
-            //     node.server.removeListener("onMessage", node.listener_onMessage);
-            // }
+            node.listener_onConnected = function() { node.onConnected(); }
+            node.server.on('onConnected', node.listener_onConnected);
 
-            node.sendStatusError();
+            node.listener_onMessage = function(data) { node.onMessage(data); }
+            node.server.on('onMessage', node.listener_onMessage);
+        }
+
+        removeListeners() {
+            let node = this;
+            // console.log('removeListeners '+ node.config.uid);
+            if (node.listener_onConnected) {
+                node.server.removeListener("onConnected", node.listener_onConnected);
+            }
+            if (node.listener_onDisconnected) {
+                node.server.removeListener("onDisconnected", node.listener_onDisconnected);
+            }
+            if (node.listener_onMessage) {
+                node.server.removeListener("onMessage", node.listener_onMessage);
+            }
+        }
+
+        onClose() {
+            this.removeListeners();
+            this.sendStatusError();
         }
 
         sendStatusError(status = null) {
-            var node = this;
+            let node = this;
             node.status({
                 fill: "red",
                 shape: "dot",

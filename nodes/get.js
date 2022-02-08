@@ -20,11 +20,11 @@ module.exports = function(RED) {
             node.last_successful_status = {};
 
             if (node.server)  {
-                node.listener_onDisconnected = function() { node.onDisconnected(); }
-                node.server.on('onDisconnected', node.listener_onDisconnected);
 
                 node.listener_onConnected = function() { node.onConnected(); }
                 node.server.on('onConnected', node.listener_onConnected);
+
+                node.on('close', () => node.onClose());
 
                 node.onConnected();
 
@@ -70,13 +70,13 @@ module.exports = function(RED) {
         }
 
         _sendStatusMultiple() {
-            var node = this;
-            var uidArr = node.uids;
+            let node = this;
+            let uidArr = node.uids;
 
-            var payload  = {};
-            var math = [];
-            for (var i in uidArr) {
-                var uid = uidArr[i];
+            let payload  = {};
+            let math = [];
+            for (let i in uidArr) {
+                let uid = uidArr[i];
 
                 if (uid in node.server.current_values) {
                     var meta = node.getServiceType(uid);
@@ -86,9 +86,9 @@ module.exports = function(RED) {
                     payload[uid]['meta'] = meta;
 
                     //format payload
-                    var p = {};
-                    for (var cid in node.server.current_values[uid]) {
-                        for (var i2 in meta.service.characteristics) {
+                    let p = {};
+                    for (let cid in node.server.current_values[uid]) {
+                        for (let i2 in meta.service.characteristics) {
                             if (meta.service.characteristics[i2]['cId'] === parseInt(cid)) {
                                 p[meta.service.characteristics[i2]['type']] = node.server.current_values[uid][cid];
                                 break;
@@ -124,12 +124,12 @@ module.exports = function(RED) {
         }
 
         _sendStatusSingle() {
-            var node = this;
-            var uid = node.uids[0];
+            let node = this;
+            let uid = node.uids[0];
             var cid = node.config.cid?node.config.cid:false;
 
             if (uid in node.server.current_values) {
-                var meta = node.getServiceType(uid);
+                let meta = node.getServiceType(uid);
                 if (!meta) return;
 
                 if (cid) { //output specified characteristic
@@ -222,7 +222,7 @@ module.exports = function(RED) {
         }
 
         getServiceType(uid) {
-            var node = this;
+            let node = this;
             if (node.serviceType !== undefined) {
                 return node.serviceType;
             } else {
@@ -239,24 +239,26 @@ module.exports = function(RED) {
             }
         }
 
-        onDisconnected() {
-            // var node = this;
+        onClose() {
+            let node = this;
 
-            // if (node.listener_onConnected) {
-            //     node.server.removeListener("onConnected", node.listener_onConnected);
-            // }
-            // if (node.listener_onDisconnected) {
-            //     node.server.removeListener("onDisconnected", node.listener_onDisconnected);
-            // }
+            if (node.listener_onDisconnected) {
+                node.server.removeListener("onDisconnected", node.listener_onDisconnected);
+            }
+
+            node.sendStatusError();
         }
 
         sendStatusError(status = null) {
-            var node = this;
+            let node = this;
             node.status({
                 fill: "red",
                 shape: "dot",
                 text: "node-red-contrib-spruthub/server:status.no_connection"
             });
+            setTimeout(function(){
+                node.status({});
+            }, 3000);
         }
     }
     RED.nodes.registerType('spruthub-get', SprutHubNodeGet);

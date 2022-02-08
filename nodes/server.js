@@ -31,7 +31,7 @@ module.exports = function(RED) {
     }
 
     initJsonRpc() {
-      var node = this;
+      let node = this;
       node.ws = new WebSocket('ws://' + node.config.host + ':' + node.config.api_port + '/spruthub', {
         autoconnect: true,
         reconnect: true,
@@ -50,49 +50,56 @@ module.exports = function(RED) {
       node.ws.on('open', function() {
         node.connection = true;
 
-        node.ws.on('characteristic.value', function(data) {
-          // console.log(data);
+        // console.log('API TOKEN: '+node.ws.getApiToken());
+        if (!node.ws.getApiToken()) {
+          node.ws.call('server.login', {'email': node.credentials.api_email, 'password': node.credentials.api_password}).then(function(result) {
+            node.log('Logged in as ' + node.credentials.api_email);
+            node.credentials.api_token = result.token;
+            node.ws.setApiToken(result.token);
 
-          var service_id = data.aId + '_' + data.sId;
-          if (!(service_id in node.current_values)) node.current_values[service_id] = {};
-
-          let last_value = node.current_values[service_id][data.cId];
-          node.current_values[service_id][data.cId] = SprutHubHelper.convertVarType(data.value);
-
-          node.emit('onMessage', {
-            topic: node.getBaseTopic() + '/accessories/' + data.aId + '/' + data.sId + '/#',
-            service_id: service_id,
-            aid: data.aId,
-            sid: data.sId,
-            cid: data.cId,
-            value: node.current_values[service_id][data.cId],
-            last_value: last_value
-          });
-        });
-
-        node.ws.call('server.login', {'email': node.credentials.api_email, 'password': node.credentials.api_password}).then(function(result) {
-          node.log('Logged in as ' + node.credentials.api_email);
-          node.credentials.api_token = result.token;
-          node.ws.setApiToken(result.token);
-
-          node.ws.call('server.version', {}).then(function(result) {
-            node.log('SprutHub version: ' + result.revision + ' (' + result.branch + ')');
-          }).catch(function(error) {
-            node.error('Failed to get SprutHub version: ' + error);
-          });
-
-          node.getServiceTypes().then(()=>{
-            node.getAccessories().then(()=>{
-              node.emit('onConnected');
+            node.ws.call('server.version', {}).then(function(result) {
+              node.log('SprutHub version: ' + result.revision + ' (' + result.branch + ')');
+            }).catch(function(error) {
+              node.error('Failed to get SprutHub version: ' + error);
+            });
+            node.getServiceTypes().then(()=>{
+              node.getAccessories().then(()=>{
+                node.emit('onConnected');
+              }).catch(error => {
+                node.error(error);
+              });
             }).catch(error => {
               node.error(error);
             });
-          }).catch(error => {
-            node.error(error);
-          });
 
-        }).catch(function(error) {
-          node.error('Auth failed: ' + error);
+          }).catch(function(error) {
+            node.error('Auth failed: ' + error);
+          });
+        } else {
+          node.log('SprutHub reconnected');
+          node.emit('onConnected');
+        }
+      });
+
+      node.ws.on('characteristic.value', function(data) {
+        if (parseInt(data.value) === -70403) {
+          return; //wtf? such value on disconnect/connect
+        }
+
+        let service_id = data.aId + '_' + data.sId;
+        if (!(service_id in node.current_values)) node.current_values[service_id] = {};
+
+        let last_value = node.current_values[service_id][data.cId];
+        node.current_values[service_id][data.cId] = SprutHubHelper.convertVarType(data.value);
+
+        node.emit('onMessage', {
+          topic: node.getBaseTopic() + '/accessories/' + data.aId + '/' + data.sId + '/#',
+          service_id: service_id,
+          aid: data.aId,
+          sid: data.sId,
+          cid: data.cId,
+          value: node.current_values[service_id][data.cId],
+          last_value: last_value
         });
       });
     }

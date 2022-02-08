@@ -6,7 +6,7 @@ module.exports = function(RED) {
         constructor(config) {
             RED.nodes.createNode(this, config);
 
-            var node = this;
+            let node = this;
             node.config = config;
             node.cleanTimer = null;
             node.server = RED.nodes.getNode(node.config.server);
@@ -20,13 +20,12 @@ module.exports = function(RED) {
             node.last_successful_status = {};
 
             if (node.server)  {
-                node.listener_onDisconnected = function() { node.onDisconnected(); }
-                node.server.on('onDisconnected', node.listener_onDisconnected);
-
                 node.listener_onConnected = function() { node.onConnected(); }
                 node.server.on('onConnected', node.listener_onConnected);
 
                 node.onConnected();
+
+                node.on('close', () => node.onClose());
 
                 node.on('input', function (message) {
                     node.processInput(message);
@@ -41,7 +40,7 @@ module.exports = function(RED) {
         }
 
         processInput(message) {
-            var node = this;
+            let node = this;
             clearTimeout(node.cleanTimer);
 
             //overwrite with topic
@@ -62,7 +61,7 @@ module.exports = function(RED) {
                 }
             }
 
-            var payload;
+            let payload;
             switch (node.config.payloadType) {
                 case 'flow':
                 case 'global': {
@@ -222,24 +221,26 @@ module.exports = function(RED) {
             return this.server.getServiceType(uid, cid);
         }
 
-        onDisconnected() {
-            // var node = this;
-            //
-            // if (node.listener_onConnected) {
-            //     node.server.removeListener("onConnected", node.listener_onConnected);
-            // }
-            // if (node.listener_onDisconnected) {
-            //     node.server.removeListener("onDisconnected", node.listener_onDisconnected);
-            // }
+        onClose() {
+            let node = this;
+
+            if (node.listener_onConnected) {
+                node.server.removeListener("onConnected", node.listener_onConnected);
+            }
+
+            node.sendStatusError();
         }
 
         sendStatusError(status = null) {
-            var node = this;
+            let node = this;
             node.status({
                 fill: "red",
                 shape: "dot",
                 text: "node-red-contrib-spruthub/server:status.no_connection"
             });
+            setTimeout(function(){
+                node.status({});
+            }, 3000);
         }
     }
 
