@@ -10,7 +10,7 @@ function spruthub_devicesSelect(val, options) {
 
     options = $.extend({
         refresh:false,
-        showHidden:withHidden,
+        showHidden:true,//withHidden,
         allowEmpty:false
     }, options);
 
@@ -214,6 +214,7 @@ function spruthub_characteristicsSelect(devices, cid) {
             }
         });
     }
+
 
     if (characteristics) {
         $.each(characteristics, function (index, c) {
