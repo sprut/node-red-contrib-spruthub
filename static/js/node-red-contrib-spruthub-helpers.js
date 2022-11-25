@@ -4,8 +4,9 @@ function spruthub_devicesSelect(val, options) {
     var $server = $("#node-input-server");
     var $friendlyName = $("#node-input-friendly_name");
     var $refreshBtn = $("#force-refresh");
-    var $showHidden = $("#node-input-showHidden");
-    var withHidden = $showHidden.is(':checked');
+    // var $showHidden = $("#node-input-showHidden");
+    // var withHidden = $showHidden.is(':checked');
+    var withHidden = true;
     var $enableMultiple = $('#node-input-enableMultiple');
 
     options = $.extend({
@@ -49,7 +50,7 @@ function spruthub_devicesSelect(val, options) {
 
             if (Object.keys(value.services).length) {
                 // var group = Object.keys(value.services).length > 1;
-                if (!value.AccessoryInformation.hidden || (value.AccessoryInformation.hidden && withHidden)) {
+                // if (!value.AccessoryInformation.hidden || (value.AccessoryInformation.hidden && withHidden)) {
 
                     var room = "C_AccessoryExtInfo" in value && "C_Room" in value.C_AccessoryExtInfo.characteristics && value.C_AccessoryExtInfo.characteristics.C_Room.value?'<sup> ('+value.C_AccessoryExtInfo.characteristics.C_Room.value+')</sup>':'';
 
@@ -63,7 +64,7 @@ function spruthub_devicesSelect(val, options) {
                     // }
 
                     $.each(value.services, function(index2, value2) {
-                        if (!value2.hidden || (value2.hidden && withHidden)) {
+                        // if (!value2.hidden || (value2.hidden && withHidden)) {
 
                             // if (group) {
                             //     $('<option value="' + value.AccessoryInformation.aid + "_" + value2.iid + '">' + value2.characteristics.Name.value+ room +
@@ -94,9 +95,9 @@ function spruthub_devicesSelect(val, options) {
                                     characteristics = value2.characteristics;
                                 }
                             }
-                        }
+                        // }
                     });
-                }
+                // }
             }
         });
 
@@ -151,10 +152,10 @@ function spruthub_devicesSelect(val, options) {
         options.refresh = true;
         spruthub_devicesSelect(val, options);
     });
-    $showHidden.off('change').on('change', function(){
-        options['showHidden'] = $showHidden.is(':checked');
-        spruthub_devicesSelect(val, options);
-    });
+    // $showHidden.off('change').on('change', function(){
+    //     options['showHidden'] = $showHidden.is(':checked');
+    //     spruthub_devicesSelect(val, options);
+    // });
     $enableMultiple.off('change').on('change', function(){
         spruthub_devicesSelect(val, options);
     });
