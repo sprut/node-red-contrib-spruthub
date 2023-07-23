@@ -90,6 +90,7 @@ module.exports = function(RED) {
         if (!(service_id in node.current_values)) node.current_values[service_id] = {};
 
         let last_value = node.current_values[service_id][data.cId];
+
         node.current_values[service_id][data.cId] = SprutHubHelper.convertVarType(data.value);
 
         node.emit('onMessage', {
@@ -233,7 +234,7 @@ module.exports = function(RED) {
             val = 'value' in characteristic ? characteristic['value'] : null;
 
             if (!(key in values)) values[key] = {};
-            values[key][parseInt(characteristic['cId'])] = val;
+            values[key][parseInt(characteristic['cId'])] = SprutHubHelper.convertVarType(val);
           }
         }
       }

@@ -85,7 +85,7 @@ module.exports = function(RED) {
                 }
 
                 case 'bool': {
-                    payload = node.config.payload?"true":"false";
+                    payload = node.config.payload == 'false' || !node.config.payload ? false : true;
                     break;
                 }
 
@@ -140,22 +140,24 @@ module.exports = function(RED) {
                     for (var characteristicName in payload) {
                         meta = node.getServiceType(uid);
                         cid = meta['accessory'][meta['service']['type']][characteristicName]['cId'];
-
                         dataToSend.push({
                             'aId': parseInt(uid.split('_')[0]),
                             'sId': parseInt(uid.split('_')[1]),
                             'cId': parseInt(cid),
                             'new_value': payload[characteristicName],
-                            'last_value': node.server.current_values[uid][cid]
+                            'last_value': node.server.current_values[uid][cid],
+                            'value_type': Object.keys(meta.characteristic.value)[0]
                         });
                     }
                 } else {
+                    meta = node.getServiceType(uid, node.config.cid);
                     dataToSend.push({
                         'aId': parseInt(uid.split('_')[0]),
                         'sId': parseInt(uid.split('_')[1]),
                         'cId': parseInt(node.config.cid),
                         'new_value': payload,
-                        'last_value': node.server.current_values[uid][node.config.cid]
+                        'last_value': node.server.current_values[uid][node.config.cid],
+                        'value_type': Object.keys(meta.characteristic.value)[0]
                     });
                 }
             }
@@ -167,15 +169,16 @@ module.exports = function(RED) {
                     node.log('Skipped RBE value');
                     continue;
                 }
-
                 if (node.config.payloadType === 'sh_payload' && row['new_value'] === 'toggle') {
                     row['new_value'] = row['last_value']?0:1;
                 }
 
                 //convert var type
-                row['new_value'] = SprutHubHelper.convertVarType(row['new_value'], node.getServiceType(row['aId']+'_'+row['sId'], row['cId']).characteristic.format);
+                row['value'] = row['new_value'];
+                let sendValue = {};
+                sendValue[row['value_type']] = row['new_value'];
 
-                let data = {'aId':row['aId'], 'cId':row['cId'], 'value':  row['new_value']};
+                let data = {'aId':row['aId'], 'cId':row['cId'], 'value':  sendValue};
                 node.log('Published to jRPC: characteristic.update : ' + JSON.stringify(data));
 
                 node.server.ws.call('characteristic.update', data, 1000).then(function(result) {
