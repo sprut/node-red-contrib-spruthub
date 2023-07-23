@@ -51,8 +51,7 @@ function spruthub_devicesSelect(val, options) {
             if (Object.keys(value.services).length) {
                 // var group = Object.keys(value.services).length > 1;
                 // if (!value.AccessoryInformation.hidden || (value.AccessoryInformation.hidden && withHidden)) {
-
-                    var room = "C_AccessoryExtInfo" in value && "C_Room" in value.C_AccessoryExtInfo.characteristics && value.C_AccessoryExtInfo.characteristics.C_Room.value?'<sup> ('+value.C_AccessoryExtInfo.characteristics.C_Room.value+')</sup>':'';
+                    var room = "C_AccessoryExtInfo" in value && "C_Room" in value.C_AccessoryExtInfo.characteristics && value.C_AccessoryExtInfo.characteristics.C_Room.value.stringValue?'<sup> ('+value.C_AccessoryExtInfo.characteristics.C_Room.value.stringValue+')</sup>':'';
 
                     // if (group) {
                     //     groupHtml = $('<optgroup/>', {
@@ -83,10 +82,10 @@ function spruthub_devicesSelect(val, options) {
                                 // typeName: "Штора"
                                 // visible: true
                                 // yandexType: "OPENABLE$CURTAIN"
-                                $('<option value="' + value2.aId+ "_" + value2.sId + '"><b>' + value2.characteristics.Name.value + "</b>" +
+                                $('<option value="' + value2.aId+ "_" + value2.sId + '"><b>' + value2.characteristics.Name.value.stringValue + "</b>" +
                                     room + "<br>  <i class='sh_serial'>" +
-                                    value.AccessoryInformation.characteristics.Model.value + ": " +
-                                    value.AccessoryInformation.characteristics.SerialNumber.value +
+                                    value.AccessoryInformation.characteristics.Model.value.stringValue + ": " +
+                                    value.AccessoryInformation.characteristics.SerialNumber.value.stringValue +
                                     "</i>" +
                                     '</option>').appendTo($select);
 
@@ -231,9 +230,9 @@ function spruthub_characteristicsSelect(devices, cid) {
             // sId: 13
             // type: "Name"
             // typeName: "Имя"
-            // value: "Батарея"
+            // value: {stringValue: "Батарея"}
             // write: false
-            $('<option value="' + c.cId + '" data-ctype="'+c.type+'">' + c.typeName + ' ('+c.type +')' + '</option>').appendTo($characteristicId);
+            $('<option value="' + c.cId + '" data-ctype="'+c.type+'">' + c.type+ '</option>').appendTo($characteristicId);
         });
         $characteristicId.val(cid);
     } else {

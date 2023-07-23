@@ -173,7 +173,7 @@ module.exports = function(RED) {
                 }
 
                 //convert var type
-                row['new_value'] = SprutHubHelper.formatValue(row['new_value'], node.getServiceType(row['aId']+'_'+row['sId'], row['cId']).characteristic.format);
+                row['new_value'] = SprutHubHelper.convertVarType(row['new_value'], node.getServiceType(row['aId']+'_'+row['sId'], row['cId']).characteristic.format);
 
                 let data = {'aId':row['aId'], 'cId':row['cId'], 'value':  row['new_value']};
                 node.log('Published to jRPC: characteristic.update : ' + JSON.stringify(data));
