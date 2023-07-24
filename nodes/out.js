@@ -135,19 +135,26 @@ module.exports = function(RED) {
                 let uid = node.uids[i];
                 let cid = null;
                 let meta = null;
+                let meta2 = null;
 
                 if (typeof (payload) == 'object') {
                     for (var characteristicName in payload) {
                         meta = node.getServiceType(uid);
-                        cid = meta['accessory'][meta['service']['type']][characteristicName]['cId'];
-                        dataToSend.push({
-                            'aId': parseInt(uid.split('_')[0]),
-                            'sId': parseInt(uid.split('_')[1]),
-                            'cId': parseInt(cid),
-                            'new_value': payload[characteristicName],
-                            'last_value': node.server.current_values[uid][cid],
-                            'value_type': Object.keys(meta.characteristic.value)[0]
-                        });
+                        if (characteristicName in meta['accessory'][meta['service']['type']]) {
+                            cid = meta['accessory'][meta['service']['type']][characteristicName]['cId'];
+                            meta2 = node.getServiceType(uid, cid);
+
+                            dataToSend.push({
+                                'aId': parseInt(uid.split('_')[0]),
+                                'sId': parseInt(uid.split('_')[1]),
+                                'cId': parseInt(cid),
+                                'new_value': payload[characteristicName],
+                                'last_value': node.server.current_values[uid][cid],
+                                'value_type': Object.keys(meta2.characteristic.value)[0]
+                            });
+                        } else {
+                            node.warn('skipped unknown characteristic:' + characteristicName)
+                        }
                     }
                 } else {
                     meta = node.getServiceType(uid, node.config.cid);
@@ -161,7 +168,6 @@ module.exports = function(RED) {
                     });
                 }
             }
-
             for (var i in dataToSend) {
                 let row = dataToSend[i];
 
