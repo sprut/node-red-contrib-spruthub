@@ -176,7 +176,7 @@ module.exports = function(RED) {
                     continue;
                 }
                 if (node.config.payloadType === 'sh_payload' && row['new_value'] === 'toggle') {
-                    row['new_value'] = row['last_value']?0:1;
+                    row['new_value'] = row['last_value']?false:true;
                 }
 
                 //convert var type
@@ -185,6 +185,7 @@ module.exports = function(RED) {
                 sendValue[row['value_type']] = row['new_value'];
 
                 let data = {'aId':row['aId'], 'cId':row['cId'], 'value':  sendValue};
+                // let data = {event: "EVENT_UPDATE", characteristic: {'aId':row['aId'], 'cId':row['cId'], 'value':  sendValue}};
                 node.log('Published to jRPC: characteristic.update : ' + JSON.stringify(data));
 
                 node.server.ws.call('characteristic.update', data, 1000).then(function(result) {
