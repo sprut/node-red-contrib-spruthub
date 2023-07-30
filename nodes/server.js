@@ -181,12 +181,12 @@ module.exports = function(RED) {
         })
         ws.on('open', function() {
           ws.call('server.login', {'email': config.email, 'password': config.password}).then(function(result) {
-            ws.setApiToken(result.token);
+            ws.setApiToken(result.server.login.token);
           }).catch(function(error) {
             reject({message: 'jRPC: server.login failed', error: error});
           });
           ws.call('server.version', {}).then(function(data) {
-            resolve(data);
+            resolve(data.server.version);
           }).catch(function(error) {
             reject({message: 'jRPC: server.version failed', error: error});
           });
