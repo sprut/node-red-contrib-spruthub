@@ -54,11 +54,11 @@ module.exports = function(RED) {
         if (!node.ws.getApiToken()) {
           node.ws.call('server.login', {'email': node.credentials.api_email, 'password': node.credentials.api_password}).then(function(result) {
             node.log('Logged in as ' + node.credentials.api_email);
-            node.credentials.api_token = result.token;
-            node.ws.setApiToken(result.token);
+            node.credentials.api_token = result.server.login.token;
+            node.ws.setApiToken(result.server.login.token);
 
             node.ws.call('server.version', {}).then(function(result) {
-              node.log('SprutHub version: ' + result.revision + ' (' + result.branch + ')');
+              node.log('SprutHub version: v'+ result.server.version.version + ' (' + result.server.version.revision + ') ' + result.server.version.branch);
             }).catch(function(error) {
               node.error('Failed to get SprutHub version: ' + error);
             });
@@ -81,10 +81,13 @@ module.exports = function(RED) {
         }
       });
 
+
+
       node.ws.on('characteristic.value', function(data) {
-        if (parseInt(data.value) === -70403) {
-          return; //wtf? such value on disconnect/connect
-        }
+        // if (parseInt(data.value) === -70403) {
+        //   return; //wtf? such value on disconnect/connect
+        // }
+        console.log(data);
 
         let service_id = data.aId + '_' + data.sId;
         if (!(service_id in node.current_values)) node.current_values[service_id] = {};
@@ -109,16 +112,12 @@ module.exports = function(RED) {
       let node = this;
       if (force || !node.accessories) {
         return await new Promise(function(resolve, reject) {
-          // console.time('homekit_WS');
-          // node.ws.call('homekit.list', {}, 60000).then(function(result) {
           node.ws.call('accessory.list', {"expand": "services+characteristics"}, 20000).then(function(result) {
-            // console.log(result.accessories[10]);
-            let data = JSON.stringify(result);
-            // console.log(data);
+            let data = JSON.stringify(result.accessory.list);
             // console.timeEnd('homekit_WS');
             // console.log('homekit_WS size: ' + data.length);
             if (SprutHubHelper.isJson(data)) {
-              node.accessories = JSON.parse(data);
+              node.accessories = JSON.parse(data).accessories;
               node.saveCurrentValues(node.accessories);
               resolve(node.accessories);
             } else {
@@ -143,11 +142,11 @@ module.exports = function(RED) {
       return await new Promise(function(resolve, reject) {
         // console.time('service.list');
         node.ws.call('service.types', {}, 20000).then(function(result) {
-          let data = JSON.stringify(result);
+          let data = JSON.stringify(result.service.types);
           // console.timeEnd('service.list');
           // console.log('service.list size: ' + data.length);
           if (SprutHubHelper.isJson(data)) {
-             node.service_types = JSON.parse(data);
+             node.service_types = JSON.parse(data).types;
              resolve(node.service_types);
           } else {
             reject('getServiceTypes: not JSON in the answer');
