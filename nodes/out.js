@@ -176,7 +176,7 @@ module.exports = function(RED) {
                     continue;
                 }
                 if (node.config.payloadType === 'sh_payload' && row['new_value'] === 'toggle') {
-                    row['new_value'] = row['last_value']?false:true;
+                    row['new_value'] = row['last_value'] ? false : true;
                 }
 
                 //convert var type

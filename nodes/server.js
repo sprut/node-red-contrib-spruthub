@@ -83,28 +83,27 @@ module.exports = function(RED) {
 
 
 
-      node.ws.on('characteristic.value', function(data) {
-        // if (parseInt(data.value) === -70403) {
-        //   return; //wtf? such value on disconnect/connect
-        // }
-        console.log(data);
+      node.ws.on('message', function(message) {
+        if ('event' in message && 'characteristic' in message.event && message.event.characteristic.event == 'EVENT_UPDATE') {
+          let data = message.event.characteristic.characteristics[0];
 
-        let service_id = data.aId + '_' + data.sId;
-        if (!(service_id in node.current_values)) node.current_values[service_id] = {};
+          let service_id = data.aId + '_' + data.sId;
+          if (!(service_id in node.current_values)) node.current_values[service_id] = {};
 
-        let last_value = node.current_values[service_id][data.cId];
+          let last_value = node.current_values[service_id][data.cId];
 
-        node.current_values[service_id][data.cId] = SprutHubHelper.convertVarType(data.value);
+          node.current_values[service_id][data.cId] = SprutHubHelper.convertVarType(data.value);
 
-        node.emit('onMessage', {
-          topic: node.getBaseTopic() + '/accessories/' + data.aId + '/' + data.sId + '/#',
-          service_id: service_id,
-          aid: data.aId,
-          sid: data.sId,
-          cid: data.cId,
-          value: node.current_values[service_id][data.cId],
-          last_value: last_value
-        });
+          node.emit('onMessage', {
+            topic: node.getBaseTopic() + '/accessories/' + data.aId + '/' + data.sId + '/#',
+            service_id: service_id,
+            aid: data.aId,
+            sid: data.sId,
+            cid: data.cId,
+            value: node.current_values[service_id][data.cId],
+            last_value: last_value
+          });
+        }
       });
     }
 
@@ -114,8 +113,6 @@ module.exports = function(RED) {
         return await new Promise(function(resolve, reject) {
           node.ws.call('accessory.list', {"expand": "services+characteristics"}, 20000).then(function(result) {
             let data = JSON.stringify(result.accessory.list);
-            // console.timeEnd('homekit_WS');
-            // console.log('homekit_WS size: ' + data.length);
             if (SprutHubHelper.isJson(data)) {
               node.accessories = JSON.parse(data).accessories;
               node.saveCurrentValues(node.accessories);
