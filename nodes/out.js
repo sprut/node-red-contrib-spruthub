@@ -188,7 +188,7 @@ module.exports = function(RED) {
                 // let data = {characteristic: {'aId':row['aId'], 'cId':row['cId'], 'value':  sendValue}};
                 node.log('Published to jRPC: characteristic.update : ' + JSON.stringify(data));
 
-                node.server.ws.call('characteristic.update', data, 1000).then(function(result) {
+                node.server.ws.call('', {characteristic:{update:data}}, 1000).then(function(result) {
                     node.setSuccessfulStatus({
                         fill: "green",
                         shape: "dot",

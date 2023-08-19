@@ -52,12 +52,13 @@ module.exports = function(RED) {
 
         // console.log('API TOKEN: '+node.ws.getApiToken());
         if (!node.ws.getApiToken()) {
-          node.ws.call('server.login', {'email': node.credentials.api_email, 'password': node.credentials.api_password}).then(function(result) {
+          node.ws.call('', {server:{login:{'email':node.credentials.api_email, 'password':node.credentials.api_password}}})
+          .then(function(result) {
             node.log('Logged in as ' + node.credentials.api_email);
             node.credentials.api_token = result.server.login.token;
             node.ws.setApiToken(result.server.login.token);
 
-            node.ws.call('server.version', {}).then(function(result) {
+            node.ws.call('', {server:{version:{}}}).then(function(result) {
               node.log('SprutHub version: v'+ result.server.version.version + ' (' + result.server.version.revision + ') ' + result.server.version.branch);
             }).catch(function(error) {
               node.error('Failed to get SprutHub version: ' + error);
@@ -73,7 +74,7 @@ module.exports = function(RED) {
             });
 
           }).catch(function(error) {
-            node.error('Auth failed: ' + error);
+            node.error('Auth failed: ' + JSON.stringify(error));
           });
         } else {
           node.log('SprutHub reconnected');
@@ -111,7 +112,7 @@ module.exports = function(RED) {
       let node = this;
       if (force || !node.accessories) {
         return await new Promise(function(resolve, reject) {
-          node.ws.call('accessory.list', {"expand": "services+characteristics"}, 20000).then(function(result) {
+          node.ws.call('', {accessory:{list:{"expand":"services+characteristics"}}}, 20000).then(function(result) {
             let data = JSON.stringify(result.accessory.list);
             if (SprutHubHelper.isJson(data)) {
               node.accessories = JSON.parse(data).accessories;
@@ -138,7 +139,7 @@ module.exports = function(RED) {
       let node = this;
       return await new Promise(function(resolve, reject) {
         // console.time('service.list');
-        node.ws.call('service.types', {}, 20000).then(function(result) {
+        node.ws.call('', {service:{types:{}}}, 20000).then(function(result) {
           let data = JSON.stringify(result.service.types);
           // console.timeEnd('service.list');
           // console.log('service.list size: ' + data.length);
@@ -180,12 +181,12 @@ module.exports = function(RED) {
           reject({message: 'No connection', error: error});
         })
         ws.on('open', function() {
-          ws.call('server.login', {'email': config.email, 'password': config.password}).then(function(result) {
+          ws.call('', {server:{login:{'email':config.email, 'password':config.password}}}).then(function(result) {
             ws.setApiToken(result.server.login.token);
           }).catch(function(error) {
             reject({message: 'jRPC: server.login failed', error: error});
           });
-          ws.call('server.version', {}).then(function(data) {
+          ws.call('', {server:{version:{}}}).then(function(data) {
             resolve(data.server.version);
           }).catch(function(error) {
             reject({message: 'jRPC: server.version failed', error: error});
