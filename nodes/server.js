@@ -52,27 +52,39 @@ module.exports = function(RED) {
 
         // console.log('API TOKEN: '+node.ws.getApiToken());
         if (!node.ws.getApiToken()) {
-          node.ws.call('', {server:{login:{'email':node.credentials.api_email, 'password':node.credentials.api_password}}})
-          .then(function(result) {
-            node.log('Logged in as ' + node.credentials.api_email);
-            node.credentials.api_token = result.server.login.token;
-            node.ws.setApiToken(result.server.login.token);
+          node.ws.call('', {account:{login:{login:node.credentials.api_email}}}).then(function(result) {
+            //console.log('result', JSON.stringify(result))
+            if (result.account.login.question?.type === 'QUESTION_TYPE_PASSWORD') {
+              //console.log('do auth', node.credentials.api_password)
+              node.ws.call('', {account:{answer:{data:node.credentials.api_password}}}).then(function(result) {
+                //console.log('result ans ', JSON.stringify(result))
+                if (result.account.answer.status === 'ACCOUNT_RESPONSE_SUCCESS') {
+                  node.log('Logged in as ' + node.credentials.api_email);
+                  const token = result.account.answer.token
+                  node.credentials.api_token = token;
+                  node.ws.setApiToken(token);
 
-            node.ws.call('', {server:{version:{}}}).then(function(result) {
-              node.log('SprutHub version: v'+ result.server.version.version + ' (' + result.server.version.revision + ') ' + result.server.version.branch);
-            }).catch(function(error) {
-              node.error('Failed to get SprutHub version: ' + error);
-            });
-            node.getServiceTypes().then(()=>{
-              node.getAccessories().then(()=>{
-                node.emit('onConnected');
-              }).catch(error => {
-                node.error(error);
-              });
-            }).catch(error => {
-              node.error(error);
-            });
-
+                  node.ws.call('', {server:{version:{}}}).then(function(result) {
+                    node.log('SprutHub version: v'+ result.server.version.version + ' (' + result.server.version.revision + ') ' + result.server.version.branch);
+                  }).catch(function(error) {
+                    node.error('Failed to get SprutHub version: ' + error);
+                  });
+                  node.getServiceTypes().then(()=>{
+                    node.getAccessories().then(()=>{
+                      node.emit('onConnected');
+                    }).catch(error => {
+                      node.error(error);
+                    });
+                  }).catch(error => {
+                    node.error(error);
+                  });
+                } else {
+                  node.error('Auth failed: - ' + result.account.answer.message);
+                }
+              })
+            } else {
+              node.error('Auth failed: - incorrect auth');
+            }
           }).catch(function(error) {
             node.error('Auth failed: ' + JSON.stringify(error));
           });
@@ -180,13 +192,29 @@ module.exports = function(RED) {
         ws.on('error', (error) => {
           reject({message: 'No connection', error: error});
         })
-        ws.on('open', function() {
-          ws.call('', {server:{login:{'email':config.email, 'password':config.password}}}).then(function(result) {
-            ws.setApiToken(result.server.login.token);
+        ws.on('open', async function() {
+          //console.log('test', config.email)
+          await ws.call('', {account:{login:{login:config.email}}}).then(async function(result) {
+            //console.log('result', JSON.stringify(result))
+            if (result.account.login.question?.type === 'QUESTION_TYPE_PASSWORD') {
+              await ws.call('', {account:{answer:{data:config.password}}}).then(function(result) {
+                //console.log('result ans ', JSON.stringify(result))
+                if (result.account.answer.status === 'ACCOUNT_RESPONSE_SUCCESS') {
+                  ws.setApiToken(result.account.answer.token);
+                } else {
+                  reject({message: 'jRPC: login failed - ' + result.account.answer.message});  
+                }
+              }).catch(function(error) {
+                reject({message: 'jRPC: login failed', error: error});
+              });
+            } else {
+              reject({message: 'jRPC: login failed - incorrect auth'});  
+            }
           }).catch(function(error) {
-            reject({message: 'jRPC: server.login failed', error: error});
+            reject({message: 'jRPC: login failed', error: error});
           });
-          ws.call('', {server:{version:{}}}).then(function(data) {
+
+          await ws.call('', {server:{version:{}}}).then(function(data) {
             resolve(data.server.version);
           }).catch(function(error) {
             reject({message: 'jRPC: server.version failed', error: error});
