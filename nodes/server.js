@@ -10,6 +10,7 @@ module.exports = function(RED) {
       var node = this;
       node.config = n;
       node.connection = false;
+      node.revision = undefined;
       node.rooms = undefined;
       node.accessories = undefined;
       node.service_types = undefined;
@@ -66,6 +67,7 @@ module.exports = function(RED) {
                   node.ws.setApiToken(token);
 
                   node.ws.call('', {server:{version:{}}}).then(function(result) {
+                    node.revision = result.server.version.revision;
                     node.log('SprutHub version: v'+ result.server.version.version + ' (' + result.server.version.revision + ') ' + result.server.version.branch);
                   }).catch(function(error) {
                     node.error('Failed to get SprutHub version: ' + error);
@@ -101,6 +103,12 @@ module.exports = function(RED) {
         //node.log('message ' + JSON.stringify(message))
         if ('event' in message && 'characteristic' in message.event && message.event.characteristic.event == 'EVENT_UPDATE') {
           let data = message.event.characteristic.characteristics[0];
+
+          //node.log('data ' + JSON.stringify(data))
+          if (data.control != null) {
+            Object.assign(data, data.control)
+            delete data.control;
+          }
 
           let service_id = data.aId + '_' + data.sId;
           if (!(service_id in node.current_values)) node.current_values[service_id] = {};
@@ -293,19 +301,25 @@ module.exports = function(RED) {
       var values = {};
       var key = null;
       var val = null;
-      var characteristic = null;
-      for (var i in data) {
-        for (var i2 in data[i]['services']) {
-          for (var i3 in data[i]['services'][i2]['characteristics']) {
-            characteristic = data[i]['services'][i2]['characteristics'][i3];
-            key = characteristic['aId'] + '_' + characteristic['sId'];
-            val = 'value' in characteristic ? characteristic['value'] : null;
+      (data || []).forEach((a) => {
+        (a.services || []).forEach((s) => {
+          (s.characteristics || []).forEach((c) => {
+            key = c.aId + '_' + c.sId;
 
-            if (!(key in values)) values[key] = {};
-            values[key][parseInt(characteristic['cId'])] = SprutHubHelper.convertVarType(val);
-          }
-        }
-      }
+            if (c.control != null) {
+              Object.assign(c, c.control)
+              delete c.control;
+            }
+
+            val = c.value || null;
+
+            if (!(key in values)) {
+              values[key] = {};
+            }
+            values[key][parseInt(c.cId)] = SprutHubHelper.convertVarType(val);
+          })
+        })
+      })
 
       node.current_values = values;
       //node.log('save values done ')// + JSON.stringify(values))

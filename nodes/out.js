@@ -184,7 +184,17 @@ module.exports = function(RED) {
                 let sendValue = {};
                 sendValue[row['value_type']] = row['new_value'];
 
-                let data = {'aId':row['aId'], 'cId':row['cId'], 'value':  sendValue};
+                //node.log("val " + node.server.revision + " -- " + JSON.stringify(sendValue))
+                let data = {
+                    'aId':row['aId'],
+                    'sId':row['sId'],
+                    'cId':row['cId'],
+                };
+                if (node.server.revision != null && node.server.revision > 12500) {
+                    data.control = {'value':  sendValue};
+                } else {
+                    data.value = sendValue;
+                }
                 // let data = {characteristic: {'aId':row['aId'], 'cId':row['cId'], 'value':  sendValue}};
                 node.log('Published to jRPC: characteristic.update : ' + JSON.stringify(data));
 
