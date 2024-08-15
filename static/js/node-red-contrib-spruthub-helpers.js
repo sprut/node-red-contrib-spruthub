@@ -45,58 +45,35 @@ function spruthub_devicesSelect(val, options) {
 
         var devices = data;
         var characteristics = {};
-        // console.log(devices);
-        $.each(devices, function(index, value) {
+        //console.log(devices);
+        $.each(devices, function(index, device) {
 
-            if (Object.keys(value.services).length) {
-                // var group = Object.keys(value.services).length > 1;
-                // if (!value.AccessoryInformation.hidden || (value.AccessoryInformation.hidden && withHidden)) {
-                    var room = "C_AccessoryExtInfo" in value && "C_Room" in value.C_AccessoryExtInfo.characteristics && value.C_AccessoryExtInfo.characteristics.C_Room.value.stringValue?'<sup> ('+value.C_AccessoryExtInfo.characteristics.C_Room.value.stringValue+')</sup>':'';
+            if (Object.keys(device.services).length) {
+                const room = device.roomName ? '<sup> (' + device.roomName + ')</sup>' : '';
 
-                    // if (group) {
-                    //     groupHtml = $('<optgroup/>', {
-                    //         label: value.AccessoryInformation.characteristics.Name.value + "<br><i class='sh_serial'>" +
-                    //             value.AccessoryInformation.characteristics.Model.value + ": " + value.AccessoryInformation.characteristics.SerialNumber.value +
-                    //             "</i>"
-                    //     });
-                    //     groupHtml.appendTo($select);
-                    // }
+                $.each(device.services, function(index2, service) {
+                    if ("characteristics" in service && "name" in service) {
+                        // aId: 201
+                        // characteristics: {C_TargetPositionState: {…}, CurrentPosition: {…}, PositionState: {…}, TargetPosition: {…}}
+                        // data: {Logic: {…}}
+                        // name: "Штора"
+                        // sId: 11
+                        // type: "WindowCovering"
+                        // visible: true
+                        $('<option value="' + service.aId + "_" + service.sId + '"><b>' + service.name + "</b>" +
+                            room + "<br>" +
+                            "<i class='sh_serial'>" +
+                            device.model + ": " +
+                            device.serial +
+                            "</i>" +
+                            '</option>').appendTo($select);
 
-                    $.each(value.services, function(index2, value2) {
-                        // if (!value2.hidden || (value2.hidden && withHidden)) {
-
-                            // if (group) {
-                            //     $('<option value="' + value.AccessoryInformation.aid + "_" + value2.iid + '">' + value2.characteristics.Name.value+ room +
-                            //         '</option>').appendTo(groupHtml);
-                            // } else {
-                            if ("characteristics" in value2 && "Name" in value2.characteristics) { //homekit controller bug
-                                // aId: 201
-                                // characteristics: {C_TargetPositionState: {…}, Name: {…}, CurrentPosition: {…}, PositionState: {…}, TargetPosition: {…}}
-                                // data: {Logic: {…}}
-                                // googleType: "WINDOW"
-                                // mailRuType: "OPENABLE$CURTAIN"
-                                // name: "Штора"
-                                // rawName: "Штора"
-                                // sId: 11
-                                // type: "WindowCovering"
-                                // typeName: "Штора"
-                                // visible: true
-                                // yandexType: "OPENABLE$CURTAIN"
-                                $('<option value="' + value2.aId+ "_" + value2.sId + '"><b>' + value2.characteristics.Name.value.stringValue + "</b>" +
-                                    room + "<br>  <i class='sh_serial'>" +
-                                    value.AccessoryInformation.characteristics.Model.value.stringValue + ": " +
-                                    value.AccessoryInformation.characteristics.SerialNumber.value.stringValue +
-                                    "</i>" +
-                                    '</option>').appendTo($select);
-
-                                //selected
-                                if (!$enableMultiple.is(':checked') && val == value2.aId + "_" + value2.sId) {
-                                    characteristics = value2.characteristics;
-                                }
-                            }
-                        // }
-                    });
-                // }
+                        //selected
+                        if (!$enableMultiple.is(':checked') && val == service.aId + "_" + service.sId) {
+                            characteristics = service.characteristics;
+                        }
+                    }
+                });
             }
         });
 
