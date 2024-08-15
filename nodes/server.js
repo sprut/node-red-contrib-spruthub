@@ -10,6 +10,7 @@ module.exports = function(RED) {
       var node = this;
       node.config = n;
       node.connection = false;
+      node.rooms = undefined;
       node.accessories = undefined;
       node.service_types = undefined;
       node.items = undefined;
@@ -97,6 +98,7 @@ module.exports = function(RED) {
 
 
       node.ws.on('message', function(message) {
+        //node.log('message ' + JSON.stringify(message))
         if ('event' in message && 'characteristic' in message.event && message.event.characteristic.event == 'EVENT_UPDATE') {
           let data = message.event.characteristic.characteristics[0];
 
@@ -120,14 +122,53 @@ module.exports = function(RED) {
       });
     }
 
+    async getRooms() {
+      let node = this;
+      if (!node.rooms) {
+        return await new Promise(function(resolve, reject) {
+          node.ws.call('', {room:{list:{}}}, 20000).then(function(result) {
+            let data = JSON.stringify(result.room.list);
+            if (SprutHubHelper.isJson(data)) {
+              
+              const rooms = JSON.parse(data).rooms;
+              const res = {};
+              rooms.forEach((room) => {
+                res[room["id"]] = {name: room["name"]}
+              });
+              //node.log('get room done' + JSON.stringify(res))
+              node.rooms = res;
+              resolve(res);
+            } else {
+              reject('getRooms: not JSON in the answer');
+            }
+          }).catch(function(error) {
+            node.error('ERROR #2342: ' + error.message);
+            reject(error);
+          });
+        }).catch(function(error) {
+          node.error('ERROR #2350: ' + error.message);
+        });
+      } else {
+        return node.rooms;
+      }
+    }
+
     async getAccessories(force = false) {
       let node = this;
+      //node.log('get acc')
       if (force || !node.accessories) {
+        const rooms = await this.getRooms()
         return await new Promise(function(resolve, reject) {
           node.ws.call('', {accessory:{list:{"expand":"services+characteristics"}}}, 20000).then(function(result) {
             let data = JSON.stringify(result.accessory.list);
             if (SprutHubHelper.isJson(data)) {
+              //node.log('get acc done')
               node.accessories = JSON.parse(data).accessories;
+              node.accessories.forEach((accessory) => {
+                if (accessory.roomId != null) {
+                  accessory.roomName = rooms[accessory.roomId]?.name || ""
+                }
+              })
               node.saveCurrentValues(node.accessories);
               resolve(node.accessories);
             } else {
@@ -150,6 +191,7 @@ module.exports = function(RED) {
     async getServiceTypes() {
       let node = this;
       return await new Promise(function(resolve, reject) {
+        //node.log('get service types')
         // console.time('service.list');
         node.ws.call('', {service:{types:{}}}, 20000).then(function(result) {
           let data = JSON.stringify(result.service.types);
@@ -157,6 +199,7 @@ module.exports = function(RED) {
           // console.log('service.list size: ' + data.length);
           if (SprutHubHelper.isJson(data)) {
              node.service_types = JSON.parse(data).types;
+             //node.log('get service types res ')// + data)
              resolve(node.service_types);
           } else {
             reject('getServiceTypes: not JSON in the answer');
@@ -265,11 +308,13 @@ module.exports = function(RED) {
       }
 
       node.current_values = values;
+      //node.log('save values done ')// + JSON.stringify(values))
     }
 
     getServiceType(uid, cid = null) {
       var node = this;
 
+      //node.log('get serv type ' + uid + '--' + cid)
       if (!node.accessories) return {};
 
       var uidRaw = uid.split('_');
@@ -339,6 +384,7 @@ module.exports = function(RED) {
       serviceType['service'] = res['service'];
       serviceType['accessory'] = res['accessory'];
       serviceType['characteristic'] = res['characteristic'];
+      //node.log('get serv type resp' + JSON.stringify(serviceType))
       return serviceType;
     }
 
