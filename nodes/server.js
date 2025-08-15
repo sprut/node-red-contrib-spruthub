@@ -97,11 +97,25 @@ module.exports = function(RED) {
         const result = await ws.call('', {server:{version:{}}})
         return result.server.version;
       } catch (error) {
-        throw 'Failed to get SprutHub version: ' + error;
+        try {
+          const result = await ws.call('', {hub:{list:{}}})
+          const hub = result.hub.list.hubs[0];
+          const version = hub.version;
+          const current = version.current;
+          const res = {
+            revision: current.revision,
+            version: current.version,
+            branch: version.branch
+          };
+          return res;
+        } catch (error2) {
+          throw "Failed to get SprutHub version: " + JSON.stringify(error) + " - " + JSON.stringify(error2);
+        }
       }
     }
 
     async authDone(token) {
+      // console.log('authDone', token)
       let node = this;
       node.credentials.api_token = token;
 
