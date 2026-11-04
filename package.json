@@ -7,10 +7,11 @@
     "description": "Sprut.hub connectivity nodes for node-red",
     "version": "3.6.0",
     "dependencies": {
-        "eventsource": "^1.1.0",
         "@babel/runtime": "^7.11.2",
         "circular-json": "^0.5.9",
         "eventemitter3": "^4.0.7",
+        "eventsource": "^1.1.0",
+        "hash-wasm": "^4.12.0",
         "uuid": "^8.3.0",
         "ws": "^8.5.0"
     },
