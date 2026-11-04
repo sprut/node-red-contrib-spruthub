@@ -1,4 +1,5 @@
 const SprutHubHelper = require('../lib/SprutHubHelper.js');
+const { signChallenge } = require('../lib/SprutHubAuth.js');
 var WebSocket = require('../lib/rpc-websockets').Client;
 
 module.exports = function(RED) {
@@ -33,63 +34,90 @@ module.exports = function(RED) {
     }
 
     async doAuth(ws, email, password) {
-      return new Promise(function(resolve, reject) {
-        ws.call('', {account:{auth:{}}}).then(function(result) {
-          //console.log('result', JSON.stringify(result))
-          if (result.account.auth.question?.type === 'QUESTION_TYPE_EMAIL') {
-            ws.call('', {account:{answer:{data: email}}}).then(function(result) {
-              //console.log('result', JSON.stringify(result))
-              if (result.account.answer.question?.type === 'QUESTION_TYPE_PASSWORD') {
-                ws.call('', {account:{answer:{data: password}}}).then(function(result) {
-                  //console.log('result', JSON.stringify(result))
-                  if (result.account.answer.status === 'ACCOUNT_RESPONSE_SUCCESS') {
-                    const token = result.account.answer.token
-                    ws.setApiToken(token);
-                    resolve(token)
-                  } else {
-                    reject('Auth failed: - incorrect auth result');
-                  }
-                }).catch(function(error) {
-                  reject('Auth failed: pass ' + JSON.stringify(error));
-                });
-              } else {
-                reject('Auth failed: - incorrect auth password');
-              }
-            }).catch(function(error) {
-              reject('Auth failed: email ' + JSON.stringify(error));
-            });
-          } else {
-            reject('Auth failed: - incorrect auth email');
-          }
-        }).catch(function(error) {
-          // reject('Auth failed: auth ' + JSON.stringify(error));
-          // try another method for revision below 13872
-          ws.call('', {account:{login:{login: email}}}).then(function(result) {
-            // console.log('result login', JSON.stringify(result))
-            if (result.account.login.question?.type === 'QUESTION_TYPE_PASSWORD') {
-              // console.log('do auth', password)
-              ws.call('', {account:{answer:{data: password}}}).then(function(result) {
-                // console.log('result answer ', JSON.stringify(result))
-                if (result.account.answer.status === 'ACCOUNT_RESPONSE_SUCCESS') {
-                  //node.log('Logged in as ' + node.credentials.api_email);
-                  const token = result.account.answer.token
-                  //node.authDone(token)
-                  ws.setApiToken(token);
-                  resolve(token)
-                } else {
-                  reject('Auth failed: - ' + result.account.answer.message);
-                }
-              }).catch(function(error) {
-                reject('Auth failed: ' + JSON.stringify(error));
-              });
-            } else {
-              reject('Auth failed: - incorrect auth');
+      let response;
+      try {
+        response = (await ws.call('', {account:{auth:{}}})).account.auth;
+      } catch (error) {
+        // no account.auth in revisions below 13872
+        return this.doLegacyAuth(ws, email, password);
+      }
+
+      // Question flow: EMAIL -> PASSWORD (legacy account) or CHALLENGE (auth v2) -> token
+      const answered = {};
+      let lastQuestion = 'account.auth';
+      for (let step = 0; step < 5; step++) {
+        if (response.status && response.status !== 'ACCOUNT_RESPONSE_SUCCESS') {
+          throw 'Auth failed on ' + lastQuestion + ': ' + (response.label?.error || response.status);
+        }
+        if (response.token) {
+          ws.setApiToken(response.token);
+          return response.token;
+        }
+
+        const question = response.question || {};
+        if (answered[question.type]) {
+          throw 'Auth failed: ' + question.type + ' asked again';
+        }
+        answered[question.type] = true;
+
+        let data;
+        switch (question.type) {
+          case 'QUESTION_TYPE_EMAIL':
+            data = email;
+            break;
+          case 'QUESTION_TYPE_PASSWORD':
+            data = password;
+            break;
+          case 'QUESTION_TYPE_CHALLENGE':
+            try {
+              data = await signChallenge(password, question.data);
+            } catch (error) {
+              throw 'Auth failed: challenge ' + (error.message || error);
             }
-          }).catch(function(error) {
-            reject('Auth failed: ' + JSON.stringify(error));
-          });
-        });
-      })
+            break;
+          default:
+            // CAPTCHA / PIN / ENROLL etc. need user interaction: log in once via web interface
+            throw 'Auth failed: unsupported question ' + (question.type || JSON.stringify(response));
+        }
+
+        if (question.delay > 0) {
+          await new Promise(resolve => setTimeout(resolve, Math.min(question.delay, 60) * 1000));
+        }
+
+        lastQuestion = question.type;
+        try {
+          response = (await ws.call('', {account:{answer:{data: data}}})).account.answer;
+        } catch (error) {
+          throw 'Auth failed: ' + question.type + ' ' + JSON.stringify(error);
+        }
+      }
+      throw 'Auth failed: too many questions';
+    }
+
+    // account.login flow for revisions below 13872
+    async doLegacyAuth(ws, email, password) {
+      let result;
+      try {
+        result = await ws.call('', {account:{login:{login: email}}});
+      } catch (error) {
+        throw 'Auth failed: ' + JSON.stringify(error);
+      }
+      if (result.account.login.question?.type !== 'QUESTION_TYPE_PASSWORD') {
+        throw 'Auth failed: - incorrect auth';
+      }
+
+      try {
+        result = await ws.call('', {account:{answer:{data: password}}});
+      } catch (error) {
+        throw 'Auth failed: ' + JSON.stringify(error);
+      }
+      if (result.account.answer.status !== 'ACCOUNT_RESPONSE_SUCCESS') {
+        throw 'Auth failed: - ' + result.account.answer.message;
+      }
+
+      const token = result.account.answer.token;
+      ws.setApiToken(token);
+      return token;
     }
 
     async getServerVersion(ws) {
